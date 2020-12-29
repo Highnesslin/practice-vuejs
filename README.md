@@ -51,11 +51,11 @@ v-model 会被解析如下
 ```
 
 ```javascript
-Vue.component("customer-component", {
-  props: ["value"],
+Vue.component('customer-component', {
+  props: ['value'],
   methods: {
     emitChange() {
-      this.$emit("input", this.value + "change");
+      this.$emit('input', this.value + 'change');
     },
   },
 });
@@ -105,7 +105,7 @@ Vue.directive("permission", {
 h：虚拟 dom 在底层的算法是 snabbdom，源码中就是命名为 h
 
 ```javascript
-Vue.component("header", {
+Vue.component('header', {
   redner(createElement) {
     return createElement(
       tag, // 标签名称
@@ -121,12 +121,12 @@ Vue.component("header", {
 无状态，无监听，无生命周期
 
 ```javascript
-Vue.component("heading", {
+Vue.component('heading', {
   functional: true,
   props: {},
   render(h, context) {
     const { title } = context.props;
-    return h("h1", { class: "head" }, [h("p", { class: "head-title" }, title)]);
+    return h('h1', { class: 'head' }, [h('p', { class: 'head-title' }, title)]);
   },
 });
 ```
@@ -167,21 +167,19 @@ MyPlugin.install = function (Vue,options) {
 在 loader 中瑜伽在 imports.scss，内部包含所有 css 变量
 
 ```javascript
-const path = require("path");
+const path = require('path');
 function addStyleResource(rule) {
   rule
-    .use("style-resource")
-    .loader("style-resources-loader")
+    .use('style-resource')
+    .loader('style-resources-loader')
     .options({
-      patterns: [path.resolve(__dirname, "./src/styles/imports.scss")],
+      patterns: [path.resolve(__dirname, './src/styles/imports.scss')],
     });
 }
 module.exports = {
-  chainWebpack: (config) => {
-    const types = ["vue-modules", "vue", "normal-modules", "normal"];
-    types.forEach((type) =>
-      addStyleResource(config.module.rule("scss").oneOf(type))
-    );
+  chainWebpack: config => {
+    const types = ['vue-modules', 'vue', 'normal-modules', 'normal'];
+    types.forEach(type => addStyleResource(config.module.rule('scss').oneOf(type)));
   },
 };
 ```
@@ -291,25 +289,53 @@ created() {
 
 ## 派生状态：getters
 
+模块化时可能会出现重复，因此每个`module`下的`getters`不能重复命名
+
+## 配合表单
+
+```javascript
+<input v-model="message" />
+```
+
+```javascript
+computed: {
+  get() {
+    return this.$store.state.form.message
+  },
+  set(value) {
+    this.$store.dispatch("updateMessage", value)
+  }
+}
+```
+
+```javascript
+// ...
+mutations: {
+  updateMessage (state, message) {
+    state.obj.message = message
+  }
+}
+```
+
 ## 插件
 
 应用：状态仓库持久化
 
 ```javascript
-const persist = (store) => {
+const persist = store => {
   // store初始化时将localStorage中的状态还原
   if (localStorage) {
-    const user = JSON.stringify(localStorage.getItem("user"));
-    store.commit("login", user.username);
+    const user = JSON.stringify(localStorage.getItem('user'));
+    store.commit('login', user.username);
   }
   // store订阅
   store.subscribe((mutation, state) => {
     // ..
-    if (mutation.type === "user/login") {
+    if (mutation.type === 'user/login') {
       const user = JSON.stringify(state.user);
-      localStorage.setItem("user", user);
-    } else if (mutation.type === "user/logout") {
-      localStorage.removeItem("user");
+      localStorage.setItem('user', user);
+    } else if (mutation.type === 'user/logout') {
+      localStorage.removeItem('user');
     }
   });
 };
