@@ -5,6 +5,7 @@ class Store {
     this._mutations = options.mutations;
     this._actions = options.actions;
 
+    // 防止内部this丢失
     this.commit = this.commit.bind(this);
     this.dispatch = this.dispatch.bind(this);
 
