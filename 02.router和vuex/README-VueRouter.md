@@ -41,7 +41,7 @@ new Vue({
 
 1. 为什么要先注册插件:`Vue.use(VueRouter)`
 2. `new VueRouter(...)`做了哪些事情
-3. 全局的`router-link`组件和`router-view`组件是哪里来的
+3. 全局的`<router-link />`组件和`<router-view />`组件是哪里来的
 
 # 原理
 
