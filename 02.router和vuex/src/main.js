@@ -10,8 +10,6 @@ Vue.config.productionTip = false;
 // 事件总线
 Vue.prototype.$bus = new Vue();
 
-console.log('kkk store', store);
-
 new Vue({
   // 添加到配置项中，为什么？
   router,

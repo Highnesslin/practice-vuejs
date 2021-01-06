@@ -53,3 +53,17 @@
    - 3.1. 更新：执行`Updater`，比如`textUpdater`、`htmlUpdater`等等
 
    - 3.2. 创建当前`key`的`Watcher`
+
+## 思考
+
+### 插值表达式如果是`{{obj.xxx}}`的形式呢
+
+可以借用`reduce`
+
+```javascript
+// const ret = this.$vm[exp]
+const ret = exp.split('.').reduce((pre, now) => {
+  pre = pre[now];
+  return pre;
+}, this.$vm);
+```

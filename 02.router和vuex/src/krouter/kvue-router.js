@@ -9,16 +9,35 @@ class VueRouter {
   constructor(options) {
     this.$options = options;
 
-    // 把current作为响应式数据
-    // 将来发生变化，router-view的render函数能够再次执行
-    const initial = window.location.hash.slice(1) || '/';
-    Vue.util.defineReactive(this, 'current', initial);
+    // // 把current作为响应式数据
+    // // 将来发生变化，router-view的render函数能够再次执行
+    this.current = window.location.hash.slice(1) || '/';
+    Vue.util.defineReactive(this, 'matched', []);
+    this.match();
 
     // 监听hash变化
     window.addEventListener('hashchange', () => {
-      console.log(this.current);
       this.current = window.location.hash.slice(1);
+      this.matched = [];
+      this.match();
     });
+  }
+
+  match(routes) {
+    routes = routes || this.$options.routes;
+
+    this.current;
+
+    for (const route of routes) {
+      if (route.path === '/' && this.current === '/') {
+        this.matched.push(route.component);
+      } else if (route.path !== '/' && this.current.includes(route.path)) {
+        this.matched.push(route.component);
+      }
+      if (route.children) {
+        this.match(route.children);
+      }
+    }
   }
 }
 // 参数1是Vue.use调用时传入的
@@ -61,15 +80,23 @@ VueRouter.install = function(_Vue) {
   });
   Vue.component('router-view', {
     render(h) {
-      // 获取当前路由对应的组件
-      let component = null;
-      const route = this.$router.$options.routes.find(route => route.path === this.$router.current);
-      if (route) {
-        component = route.component;
-      }
-      console.log(this.$router.current, component);
+      // <router-view /> 的标志
+      this.$vnode.data.routerView = true;
 
-      return h(component);
+      // 嵌套路由
+      let depth = 0;
+      let parent = this.$parent;
+      while (parent) {
+        const vnodeData = parent.$vnode ? parent.$vnode.data : {};
+        if (vnodeData.routerView) {
+          depth++;
+        }
+        parent = parent.$parent;
+      }
+
+      const component = this.$router.matched[depth];
+
+      return component ? h(component) : null;
     },
   });
 };

@@ -27,7 +27,12 @@
         <span>v-html</span>
         <span v-html="desc"></span>
       </div>
-      <button v-on:click="onClick()">v-on:click</button>
+      <p>
+        <span>detail.id</span>
+        <span>{{id}}</span>
+      </p>
+      <hr />
+      <button v-on:click="alert(6)">v-on:click</button>
       <button @click="popup">@click</button>
       <hr />
       <input v-model="msg" />
@@ -45,20 +50,17 @@
         },
         methods: {
           popup() {
-            alert('popup');
+            console.log(this._data);
+            MVVM.set(this._data, 'id', 6);
           },
         },
       });
-      //   setTimeout(() => {
-      //     app.msg = 'sir';
-      //   }, 1000);
-      //   setInterval(() => {
-      //     app.counter++;
-      //   }, 1000);
-
-      window.onClick = () => {
-        alert(6);
-      };
+      // setTimeout(() => {
+      //   app.msg = 'sir';
+      // }, 1000);
+      // setInterval(() => {
+      //   app.counter++;
+      // }, 1000);
     </script>
   </body>
 </html>

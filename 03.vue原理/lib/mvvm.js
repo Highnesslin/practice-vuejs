@@ -15,9 +15,16 @@ export default class MVVM {
   }
 }
 
-MVVM.set = defineReactive;
+MVVM.set = (obj, key, val) => {
+  if (obj[key] === undefined) {
+    defineReactive(obj, key, val);
+  }
+
+  obj[key] = val;
+};
 
 function proxy(vm) {
+  // 代理 data
   Object.keys(vm._data).forEach(key => {
     Object.defineProperty(vm, key, {
       get() {
@@ -25,6 +32,14 @@ function proxy(vm) {
       },
       set(newVal) {
         vm._data[key] = newVal;
+      },
+    });
+  });
+  // 代理 methods
+  Object.keys(vm.$methods).forEach(method => {
+    Object.defineProperty(vm, method, {
+      get() {
+        return vm.$methods[method].bind(vm);
       },
     });
   });

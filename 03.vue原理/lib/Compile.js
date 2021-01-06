@@ -32,11 +32,6 @@ export default class Compile {
     return node.nodeType === 3 && /\{\{(.*)\}\}/.test(node.textContent);
   }
 
-  /**
-1.v-modal指令: v-modal指令是 :value和@input事件的组合使用，所以处理v-modal时直接给dom添加value，然后绑定input事件即可
-2.绑定事件: 根据正则表达式判断如果是v-on或@开头的 attributes，则判定为事件，函数分为两种，methods上的和字符串的函数表达式，分别用method.bind和new Function来处理
- */
-
   compileElement(node) {
     Array.from(node.attributes).forEach(attr => {
       const attrName = attr.name;
@@ -65,9 +60,9 @@ export default class Compile {
 
   // + 处理事件
   event(node, eventVal) {
-    const event = this.$vm.$methods[eventVal];
+    const event = this.$vm[eventVal];
     // methods身上的事件，或字符串形式的函数表达式
-    const fn = event ? event.bind(this.$vm) : new Function(eventVal);
+    const fn = event || new Function(eventVal);
 
     node.addEventListener(RegExp.$1, fn);
   }
@@ -97,10 +92,20 @@ export default class Compile {
   update(node, exp, dir) {
     const fn = this[`${dir}Updater`];
 
-    fn && fn(node, this.$vm[exp]);
+    const ret = exp.split('.').reduce((pre, now) => {
+      pre = pre[now];
+      return pre;
+    }, this.$vm); // this.$vm[exp]
+
+    fn && fn(node, ret);
 
     new Watcher(this.$vm, exp, () => {
-      fn && fn(node, this.$vm[exp]);
+      const ret = exp.split('.').reduce((pre, now) => {
+        pre = pre[now];
+        return pre;
+      }, this.$vm); // this.$vm[exp]
+
+      fn && fn(node, ret);
     });
   }
 
