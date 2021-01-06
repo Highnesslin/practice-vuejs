@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>手写vue</title>
+  </head>
+  <body>
+    <div id="root">
+      <p>
+        <span>counter:</span>
+        <span>{{counter}}</span>
+      </p>
+      <p>
+        <span>当前数值:</span>
+        <span>{{counter}}</span>
+      </p>
+      <p>
+        <span>v-text</span>
+        <span v-text="counter"></span>
+      </p>
+      <p>
+        <span>msg:</span>
+        <span>{{msg}}</span>
+      </p>
+      <div>
+        <span>v-html</span>
+        <span v-html="desc"></span>
+      </div>
+      <button v-on:click="onClick()">v-on:click</button>
+      <button @click="popup">@click</button>
+      <hr />
+      <input v-model="msg" />
+    </div>
+    <script type="module">
+      import MVVM from './lib/mvvm.js';
+
+      window.app = new MVVM({
+        el: '#root',
+        data: {
+          counter: 0,
+          msg: 'hello',
+          desc: '<span style="color: red">MVVM</span>',
+          detail: {},
+        },
+        methods: {
+          popup() {
+            alert('popup');
+          },
+        },
+      });
+      //   setTimeout(() => {
+      //     app.msg = 'sir';
+      //   }, 1000);
+      //   setInterval(() => {
+      //     app.counter++;
+      //   }, 1000);
+
+      window.onClick = () => {
+        alert(6);
+      };
+    </script>
+  </body>
+</html>
