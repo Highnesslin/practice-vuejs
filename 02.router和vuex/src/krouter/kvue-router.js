@@ -11,11 +11,11 @@ class VueRouter {
 
     // 把current作为响应式数据
     // 将来发生变化，router-view的render函数能够再次执行
-    const initial = window.location.hash.slice(1) || "/";
-    Vue.util.defineReactive(this, 'current', initial)
+    const initial = window.location.hash.slice(1) || '/';
+    Vue.util.defineReactive(this, 'current', initial);
 
     // 监听hash变化
-    window.addEventListener("hashchange", () => {
+    window.addEventListener('hashchange', () => {
       console.log(this.current);
       this.current = window.location.hash.slice(1);
     });
@@ -30,7 +30,7 @@ VueRouter.install = function(_Vue) {
   // 全局混入目的：延迟下面逻辑到router创建完毕并且附加到选项上时才执行
   Vue.mixin({
     beforeCreate() {
-      // 次钩子在每个组件创建实例时都会调用
+      // 此钩子在每个组件创建实例时都会调用
       // 根实例才有该选项
       if (this.$options.router) {
         Vue.prototype.$router = this.$options.router;
@@ -39,7 +39,7 @@ VueRouter.install = function(_Vue) {
   });
 
   // 2.注册实现两个组件router-view,router-link
-  Vue.component("router-link", {
+  Vue.component('router-link', {
     props: {
       to: {
         type: String,
@@ -47,31 +47,27 @@ VueRouter.install = function(_Vue) {
       },
     },
     render(h) {
-      // <a href="to">xxx</a>
       // return <a href={'#'+this.to}>{this.$slots.default}</a>
       return h(
-        "a",
+        'a',
         {
           attrs: {
-            href: "#" + this.to,
+            href: '#' + this.to,
           },
         },
         this.$slots.default
       );
     },
   });
-  Vue.component("router-view", {
+  Vue.component('router-view', {
     render(h) {
       // 获取当前路由对应的组件
-      let component = null
-      const route = this.$router.$options.routes.find(
-        (route) => route.path === this.$router.current
-      );
+      let component = null;
+      const route = this.$router.$options.routes.find(route => route.path === this.$router.current);
       if (route) {
-        component = route.component
+        component = route.component;
       }
       console.log(this.$router.current, component);
-      
 
       return h(component);
     },
