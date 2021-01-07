@@ -1,9 +1,15 @@
 # 使用
 
+1. 使用 Vuex 插件
+
 ```javascript
 // 1.使用Vuex插件
 Vue.use(Vuex);
+```
 
+2. 创建 store 实例
+
+```javascript
 // 2.创建store实例
 new Vuex.Store({
   state: {
@@ -27,8 +33,12 @@ new Vuex.Store({
     },
   },
 });
+```
 
-// 3.配置到选项中
+3. 配置到 options 中
+
+```javascript
+// 3.配置到options中
 new Vue({
   // ...其他options
   router,
@@ -38,8 +48,8 @@ new Vue({
 
 # 问题
 
-1. 为什么要先注册插件:`Vue.use(Vuex)`
-2. `new Vuex.Store(...)`做了哪些事情
+1. 为什么要先注册插件:`Vue.use(Vuex)`，注册插件都做了那些事情？
+2. `new Vuex.Store(...)`做了哪些事情，为什么 state 可以响应式变化？
 3. `mutations`参数中的`state`从哪里来
 4. `actions`参数中解构出了`commit`,`commit`是什么，从哪里来？
 
@@ -47,6 +57,7 @@ new Vue({
 
 ## state
 
+在研究`VueRouter`源码时专门深入了解了用`Vue`做响应式的几种方式
 (源码中这样操作)[https://github.com/vuejs/vuex/blob/1c693b6c917d1420032ad2c95680ce38ff2e6bff/src/store.js#L308]
 
 ```javascript

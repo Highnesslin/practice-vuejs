@@ -32,6 +32,24 @@ export default class Compile {
     return node.nodeType === 3 && /\{\{(.*)\}\}/.test(node.textContent);
   }
 
+  // // + 判断是不是动态绑定
+  // isVBind(attr) {
+  //   return /v-bind:(.*)/.test(attr);
+  // }
+
+  isDir(attr) {
+    return attr.startsWith('v-');
+  }
+
+  compileText(node) {
+    this.update(node, RegExp.$1, 'text');
+  }
+
+  // + 判断是不是事件
+  isEvent(attr) {
+    return /v-on:(.*)/.test(attr) || /@(.*)/.test(attr);
+  }
+
   compileElement(node) {
     Array.from(node.attributes).forEach(attr => {
       const attrName = attr.name;
@@ -53,11 +71,6 @@ export default class Compile {
     });
   }
 
-  // + 判断是不是事件
-  isEvent(attr) {
-    return /v-on:(.*)/.test(attr) || /@(.*)/.test(attr);
-  }
-
   // + 处理事件
   event(node, eventVal) {
     const event = this.$vm[eventVal];
@@ -67,45 +80,49 @@ export default class Compile {
     node.addEventListener(RegExp.$1, fn);
   }
 
+  // + 处理差值表达式
+  handleInter(exp) {
+    // 处理嵌套
+    let value = this.$vm, // 最终取到的值 this.detail.id的值：6
+      target = this.$vm, // 表达式：this.detail
+      key = exp; // 要观测的key，也就是最后一个 id
+
+    const temp = exp.split('.');
+    if (temp.length > 1) {
+      temp.forEach((_key, index) => {
+        value = value[_key];
+        if (index < temp.length - 1) {
+          target = target[_key];
+        } else {
+          key = _key;
+        }
+      });
+    } else {
+      value = value[key];
+    }
+
+    return { target, value, key };
+  }
+
+  update(node, exp, dir) {
+    const fn = this[`${dir}Updater`];
+
+    // 计算差值表达式的值
+    const { target, value, key } = this.handleInter(exp);
+    fn && fn(node, value);
+
+    new Watcher(target, key, () => {
+      const value = target[key];
+      fn && fn(node, value);
+    });
+  }
+
   // + 处理v-modal
   model(node, exp) {
     this.update(node, exp, 'value');
 
     node.addEventListener('input', e => {
       this.$vm[exp] = e.target.value;
-    });
-  }
-
-  // // + 判断是不是动态绑定
-  // isVBind(attr) {
-  //   return /v-bind:(.*)/.test(attr);
-  // }
-
-  isDir(attr) {
-    return attr.startsWith('v-');
-  }
-
-  compileText(node) {
-    this.update(node, RegExp.$1, 'text');
-  }
-
-  update(node, exp, dir) {
-    const fn = this[`${dir}Updater`];
-
-    const ret = exp.split('.').reduce((pre, now) => {
-      pre = pre[now];
-      return pre;
-    }, this.$vm); // this.$vm[exp]
-
-    fn && fn(node, ret);
-
-    new Watcher(this.$vm, exp, () => {
-      const ret = exp.split('.').reduce((pre, now) => {
-        pre = pre[now];
-        return pre;
-      }, this.$vm); // this.$vm[exp]
-
-      fn && fn(node, ret);
     });
   }
 

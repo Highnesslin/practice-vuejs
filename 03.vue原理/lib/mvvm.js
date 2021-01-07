@@ -1,10 +1,11 @@
-import { observe, defineReactive } from './Observer.js';
+import { observe } from './Observer.js';
 import Compile from './Compile.js';
 
 export default class MVVM {
   constructor(options) {
     this.$options = options;
     this._data = options.data;
+    // + 挂载methods
     this.$methods = options.methods || {};
 
     observe(this._data);
@@ -14,14 +15,6 @@ export default class MVVM {
     new Compile(options.el, this);
   }
 }
-
-MVVM.set = (obj, key, val) => {
-  if (obj[key] === undefined) {
-    defineReactive(obj, key, val);
-  }
-
-  obj[key] = val;
-};
 
 function proxy(vm) {
   // 代理 data
@@ -35,7 +28,7 @@ function proxy(vm) {
       },
     });
   });
-  // 代理 methods
+  // + 代理 methods
   Object.keys(vm.$methods).forEach(method => {
     Object.defineProperty(vm, method, {
       get() {

@@ -29,7 +29,7 @@
       </div>
       <p>
         <span>detail.id</span>
-        <span>{{id}}</span>
+        <span>{{detail.id}}</span>
       </p>
       <hr />
       <button v-on:click="alert(6)">v-on:click</button>
@@ -46,12 +46,13 @@
           counter: 0,
           msg: 'hello',
           desc: '<span style="color: red">MVVM</span>',
-          detail: {},
+          detail: {
+            id: 1,
+          },
         },
         methods: {
           popup() {
-            console.log(this._data);
-            MVVM.set(this._data, 'id', 6);
+            this.detail.id++;
           },
         },
       });
