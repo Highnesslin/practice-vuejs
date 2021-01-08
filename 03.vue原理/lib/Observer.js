@@ -1,11 +1,11 @@
 import Dep from './Dep.js';
-
-const arrayEvent = ['push', 'pop', 'shift', 'unshift', 'splice'];
+import { arrayProto } from './array.js';
 class Observer {
   constructor(_data) {
     //
     if (Array.isArray(_data)) {
       // todo
+      this.observeArray(_data);
     } else {
       this.walk(_data);
     }
@@ -16,32 +16,12 @@ class Observer {
     });
   }
   observeArray(data) {
-    //
-    const arrayProto = Array.prototype;
-    const arrayMethods = Object.create(arrayProto);
-
-    arrayEvent.forEach(method => {
-      const original = arrayProto[method];
-
-      def(arrayMethods, method, function mutator(...args) {
-        const result = original.apply(this, args);
-        const ob = this.__ob__;
-        let inserted;
-        switch (method) {
-          case 'push':
-          case 'unshift':
-            inserted = args;
-            break;
-          case 'splice':
-            inserted = args.slice(2);
-            break;
-        }
-        if (inserted) ob.observeArray(inserted);
-        // notify change
-        ob.dep.notify();
-        return result;
-      });
-    });
+    // 覆盖原型方法
+    data.__proto__ = arrayProto;
+    // 对数组内部元素执行响应化
+    for (let item of data) {
+      observe(item);
+    }
   }
 }
 

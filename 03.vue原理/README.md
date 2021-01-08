@@ -67,3 +67,13 @@ const ret = exp.split('.').reduce((pre, now) => {
   return pre;
 }, this.$vm);
 ```
+
+### 数组如何监听
+
+const originalProto = Array.prototype
+
+const arrayProto = ... // 对数组进行变异
+
+当 obj 为 Array 时，给实例修改原型，即`__proto__`
+
+因为数组元素可能是对象，因此对数组元素进行 observe

@@ -47,8 +47,9 @@
           msg: 'hello',
           desc: '<span style="color: red">MVVM</span>',
           detail: {
-            id: 1,
+            id: 2,
           },
+          arr: [1],
         },
         methods: {
           popup() {
@@ -62,6 +63,7 @@
       // setInterval(() => {
       //   app.counter++;
       // }, 1000);
+      app.arr.push(2);
     </script>
   </body>
 </html>
