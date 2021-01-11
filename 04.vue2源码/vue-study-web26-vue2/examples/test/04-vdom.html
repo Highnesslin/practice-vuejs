@@ -1,28 +1,27 @@
 <!DOCTYPE html>
 <html>
-
-<head>
+  <head>
     <title>Vue源码剖析</title>
     <script src="../../dist/vue.js"></script>
-</head>
+  </head>
 
-<body>
-    <div id="demo">
-        <h1>虚拟DOM</h1>
-        <p>{{foo}}</p>
-    </div>
+  <body>
+    <div id="demo"></div>
     <script>
-        // 创建实例
-        const app = new Vue({
-            el: '#demo',
-            data: { foo: 'foo' },
-            mounted() {
-                setTimeout(() => {
-                    this.foo = 'fooooo'
-                }, 1000);
-            }
-        });
+      // 创建实例
+      const app = new Vue({
+        // el: "#demo",
+        template: `
+                <div>123</div>
+                <div>456</div>
+            `,
+        data: { foo: "foo" },
+        mounted() {
+          setTimeout(() => {
+            this.foo = "fooooo";
+          }, 1000);
+        },
+      }).$mount("#app");
     </script>
-</body>
-
+  </body>
 </html>

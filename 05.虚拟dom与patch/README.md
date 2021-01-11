@@ -204,71 +204,283 @@ function flushCallbacks() {
 
 ## 虚拟 dom
 
-- 出现的意义，只是为了向 react 学习吗？
+- 出现的意义，难道只是为了向 react 靠近吗？
+
+balabala
 
 - 不适合的场景
-  游戏画面需要频繁渲染，此时如果使用虚拟 dom，cpu 会持续占用造成卡顿，因此不适合游戏场景
+  <br/>游戏画面需要频繁渲染，此时如果使用虚拟 dom，cpu 会持续占用造成卡顿，因此不适合游戏场景
 - children 中有个 VNode 怎么是 undefined？
-  空格或换行
+  <br/>空格或换行
 
 - 为什么模板必须是单根节点？
-  源码中 patch 方法中无法处理多根节点
+  <br/>源码中 patch 方法中无法处理多根节点
 
-```javascript
-
-```
-
-- 虚拟 dom 不适合的场景
+- 循环时为什么要写 key
 
 ### 流程
 
-4 个游标分别代表新旧节点的头与尾，
+4 个游标分别代表新旧节点的首与尾，
 
 1. 首先进行新旧节点的首与首对比，若满足 sameType 就进行 patchVnode ，然后两个首的游标向后移动，进行下一次操作，
 2. 如果遇到不满足 sameType 的情况，则先尝试进行新旧节点的尾尾比较，若同样满足 sameType 就 patchVnode 然后移动游标。
 3. 若再次遇到不满足 sameType 的情况，就对游标中间的元素进行 diff（传统 diff）
 4. 最后进行扫尾工作，即如果新旧节点数量不同的情况，若剩下的是新节点，则表示要增加的内容，若剩下的是旧节点，则表示要删除的内容
 
-### 首次创建与组件更新的区别
+### 细节
 
-prevVnode 不存在，调用 createElm 创建一整棵树，在当前节点的 nextSibling 添加新节点，然后删除旧节点，如果 debug 会看到某一刻页面上出现两个节点，后续会删除旧节点保留新节点
+#### 首次创建与组件更新的区别
 
-### patch 做了哪些事情？
+首次创建和组件更新都走都是`__patch__`方法
+
+```javascript
+const prevVnode = vm._vnode;
+const restoreActiveInstance = setActiveInstance(vm);
+vm._vnode = vnode;
+// Vue.prototype.__patch__ is injected in entry points
+// based on the rendering backend used.
+if (!prevVnode) {
+  // initial render
+  vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */);
+} else {
+  // updates
+  vm.$el = vm.__patch__(prevVnode, vnode);
+}
+```
+
+prevVnode 不存在，调用 `createElm` 创建一整棵树，在当前节点的 `nextSibling` 添加新节点，此时如果在 `debug`， 会看到页面上出现了两个节点，后续会删除旧节点保留新节点
+
+#### patch 做了哪些事情？
 
 位置：`core/vdom/patch.js`
 通过`createPatchFunction`这个工厂函数返回一个真正的`patch`
 
-- 1. 树级别的比较
+- 1. 首先进行树级别的比较
 
   - newVnode 不存在 **删除**
   - oldVnode 不存在 **新增**
-  - 都存在
-    - 1.1. oldVnode 是**真实 dom**，也就是`init`阶段
-    - 1.2. 都是`vnode` patchVnode
+  - newVnode 与 oldVnode 都存在
 
-### patchVnode：diff 发生的地方
+    - 1.1. oldVnode 是**真实 dom**，也就是`init`阶段
+    - 1.2. 都是`vnode` **patchVnode**
+
+    核心代码：
+
+    ```javascript
+    return function patch(oldVnode, vnode, hydrating, removeOnly) {
+      if (isUndef(oldVnode)) {
+      } else {
+        const isRealElement = isDef(oldVnode.nodeType);
+        if (!isRealElement && sameVnode(oldVnode, vnode)) {
+          // patch existing root node
+          // 更新逻辑
+          patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
+        } else {
+          // 初始化逻辑
+          if (isRealElement) {
+            // either not server-rendered, or hydration failed.
+            // create an empty node and replace it
+            oldVnode = emptyNodeAt(oldVnode);
+          }
+
+          // 真实dom
+          const oldElm = oldVnode.elm;
+          const parentElm = nodeOps.parentNode(oldElm);
+
+          // 创建一整棵树
+          createElm(
+            vnode,
+            insertedVnodeQueue,
+            // extremely rare edge case: do not insert if old element is in a
+            // leaving transition. Only happens when combining transition +
+            // keep-alive + HOCs. (#4590)
+            oldElm._leaveCb ? null : parentElm,
+            nodeOps.nextSibling(oldElm)
+          );
+
+          // 此时界面上新旧dom都存在
+
+          // 删除老节点
+          if (isDef(parentElm)) {
+            removeVnodes([oldVnode], 0, 0);
+          } else if (isDef(oldVnode.tag)) {
+            invokeDestroyHook(oldVnode);
+          }
+        }
+      }
+
+      invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch);
+      return vnode.elm;
+    };
+    ```
+
+#### patchVnode：diff 发生的地方
 
 - 比较策略：同层比较，深度优先
 
-  1. 同层比较，深度优先
-  2. 顺序：属性 > 文本 > children
+  1. 同层比较，深度优先(类似先序遍历)
+  2. 更新顺序：
+     - 2.1. 属性
+     - 2.2. 文本
+     - 2.3. children
 
 - 规则：
 
-  1. 都有 children，updateChildren
-  2. newVnode 有 children，oldVnode 没有，则先清空 oldVnode 的文本，然后新增 children
-  3. newVnode 没有 children，oldVnode 有 children，移除所有 children
-  4. newVnode 和 oldVnode 都没有 children，则文本替换
+  1. 新老节点 都有 children, updateChildren
+  2. 新节点 有 children，老节点 没有 children，则先清空 老节点 的文本，然后新增 children
+  3. 新节点 没有 children，老节点 有 children，移除所有 children
+  4. 新节点 和 老节点 都没有 children，则文本替换
 
-### sameVnode
+核心代码：
+
+```javascript
+function patchVnode(oldVnode, vnode, insertedVnodeQueue, ownerArray, index, removeOnly) {
+  if (oldVnode === vnode) {
+    return;
+  }
+  // 获取两节点孩子
+  const oldCh = oldVnode.children;
+  const ch = vnode.children;
+
+  // 属性更新，没有diff，全部更新   ps：vue3静态标记都优化主要在这部分
+  if (isDef(data) && isPatchable(vnode)) {
+    for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode);
+    if (isDef((i = data.hook)) && isDef((i = i.update))) i(oldVnode, vnode);
+  }
+
+  // text children
+  if (isUndef(vnode.text)) {
+    // 新老节点都有孩子
+    if (isDef(oldCh) && isDef(ch)) {
+      if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly);
+    } else if (isDef(ch)) {
+      // 新节点有孩子，创建
+      if (process.env.NODE_ENV !== 'production') {
+        checkDuplicateKeys(ch);
+      }
+      if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, '');
+      addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue);
+    } else if (isDef(oldCh)) {
+      // 删除
+      removeVnodes(oldCh, 0, oldCh.length - 1);
+    } else if (isDef(oldVnode.text)) {
+      // 清空文本
+      nodeOps.setTextContent(elm, '');
+    }
+  } else if (oldVnode.text !== vnode.text) {
+    // 文本更新
+    nodeOps.setTextContent(elm, vnode.text);
+  }
+}
+```
+
+#### updateChildren
+
+按照 **web 场景** 中常见的数组变化进行 `diff`，
+常见的场景有
+
+1. 列表头部添加/删除 dom，列表尾部添加/删除 dom，
+2. 列表排序，升序降序的改变，即首尾互换
+
+由上得出 4 中情况，头头，尾尾，头尾，尾头
+
+步骤：
+
+1. 创建 4 个游标，
+2. 不移动的操作：新旧节点 头头对比或尾尾对比
+   若 sameVnode，则 patchVnode，然后游标运动
+3. 有移动的操作：头尾对比，尾头对比
+4. 乱序：两个数组对比，找到节点更新，然后移动到新位置
+5. 扫尾工作：随着循环，四个游标两两靠近，如果最后没有重叠，说明新旧节点数量有变化，所以需要批量添加或批量删除
+
+核心代码：
+
+```javascript
+function updateChildren(parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly) {
+  // 4个游标
+  let oldStartIdx = 0;
+  let newStartIdx = 0;
+  let oldEndIdx = oldCh.length - 1;
+  let oldStartVnode = oldCh[0];
+  let oldEndVnode = oldCh[oldEndIdx];
+  let newEndIdx = newCh.length - 1;
+  let newStartVnode = newCh[0];
+  let newEndVnode = newCh[newEndIdx];
+  // 搜索相同节点时使用
+  let oldKeyToIdx, idxInOld, vnodeToMove, refElm;
+
+  // removeOnly is a special flag used only by <transition-group>
+  // to ensure removed elements stay in correct relative positions
+  // during leaving transitions
+  const canMove = !removeOnly;
+
+  if (process.env.NODE_ENV !== 'production') {
+    checkDuplicateKeys(newCh);
+  }
+
+  // 循环条件时游标不重叠
+  while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+    // 调整游标：游标移动可能造成对应节点为空
+    if (isUndef(oldStartVnode)) {
+      oldStartVnode = oldCh[++oldStartIdx]; // Vnode has been moved left
+    } else if (isUndef(oldEndVnode)) {
+      oldEndVnode = oldCh[--oldEndIdx];
+      // 4个else if 是首尾查找
+    } else if (sameVnode(oldStartVnode, newStartVnode)) {
+      // 头头
+      patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx);
+      oldStartVnode = oldCh[++oldStartIdx];
+      newStartVnode = newCh[++newStartIdx];
+    } else if (sameVnode(oldEndVnode, newEndVnode)) {
+      // 尾尾
+      patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx);
+      oldEndVnode = oldCh[--oldEndIdx];
+      newEndVnode = newCh[--newEndIdx];
+    } else if (sameVnode(oldStartVnode, newEndVnode)) {
+      // 头尾
+      // Vnode moved right
+      patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue, newCh, newEndIdx);
+      canMove &&
+        nodeOps.insertBefore(parentElm, oldStartVnode.elm, nodeOps.nextSibling(oldEndVnode.elm));
+      oldStartVnode = oldCh[++oldStartIdx];
+      newEndVnode = newCh[--newEndIdx];
+    } else if (sameVnode(oldEndVnode, newStartVnode)) {
+      // 尾头
+      // Vnode moved left
+      patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue, newCh, newStartIdx);
+      canMove && nodeOps.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm);
+      oldEndVnode = oldCh[--oldEndIdx];
+      newStartVnode = newCh[++newStartIdx];
+    } else {
+      // 乱序diff
+      // 核心就是从新数组取第一个，然后从老数组查找，代码太多了先不贴了
+    }
+  }
+  // 循环结束，开始扫尾工作   批量创建或删除
+  if (oldStartIdx > oldEndIdx) {
+    refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm;
+    addVnodes(parentElm, refElm, newCh, newStartIdx, newEndIdx, insertedVnodeQueue);
+  } else if (newStartIdx > newEndIdx) {
+    removeVnodes(oldCh, oldStartIdx, oldEndIdx);
+  }
+}
+```
+
+#### sameType 和 key
+
+##### sameType
 
 ```javascript
 function sameVnode(a, b) {
   return (
+    // 必要条件：key
     a.key === b.key &&
+    // 相同元素
     ((a.tag === b.tag &&
       a.isComment === b.isComment &&
+      // 数据相同
       isDef(a.data) === isDef(b.data) &&
+      // 。。。
       sameInputType(a, b)) ||
       (isTrue(a.isAsyncPlaceholder) &&
         a.asyncFactory === b.asyncFactory &&
@@ -277,16 +489,9 @@ function sameVnode(a, b) {
 }
 ```
 
-### updateChildren 与 key 的作用
+一般前两个条件就可以确定了
 
-1. 不移动：新旧节点 头头对比或尾尾对比
-   创建 4 个游标，
-   若 sameVnode，则 patchVnode，然后游标运动
-2. 移动：头尾对比，尾头对比
-3. 乱序：两个数组对比
-4. 扫尾工作：处理新旧游标中间的 dom，批量添加或批量删除
-
-循环的条件是游标不重叠
+##### key
 
 由此可见，设置 key 可以更好的判断新旧节点是否相同
 
@@ -343,6 +548,27 @@ function sameVnode(a, b) {
 // 额外更新了4次
 ```
 
-由 `sameType` 的内容想到，如果用 `index` 做 `key`，列表重新排序可能会出现 `bug`
+### 思考与总结
 
+#### 1. 为什么 `patch` 不是直接使用，而是通过一个**工厂函数**`createPatchFunction`返回
+
+```javascript
+// 接收平台特殊操作，返回平台patch
+export function createPatchFunction(backend) {
+  let i, j;
+  const cbs = {};
+
+  const { modules, nodeOps } = backend;
+
+  return function patch(...) {
+    // ...
+  };
+}
+```
+
+#### 为什么不推荐用 `index` 作 `key`
+
+列表重排序会报错
+
+比如：
 当列表中出现删除场景时，因为 `sameType` 的策略是首先比较 `key`，被删除节点后面的 `dom`，由于 `key(index)` 也发生了改变，就会被判定为 `dom` 发生了改变，首先造成的影响就是 diff 流程变复杂，如果列表并没有太复杂，造成不了太多性能的损耗，但是继续思考，如果那些没有改变的 `dom`，很不幸操作了一些非响应式引起的变化，比如改变 `style`，或通过 `css` 弹出了 `Popover`，那么当前更新时就会覆盖这些非响应式变化，让用户体验不好，或者误以为产生了 bug
