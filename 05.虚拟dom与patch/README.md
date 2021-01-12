@@ -204,21 +204,17 @@ function flushCallbacks() {
 
 ## 虚拟 dom
 
+### 问题
+
 - 出现的意义，难道只是为了向 react 靠近吗？
-
-balabala
-
-- 不适合的场景
-  <br/>游戏画面需要频繁渲染，此时如果使用虚拟 dom，cpu 会持续占用造成卡顿，因此不适合游戏场景
-- children 中有个 VNode 怎么是 undefined？
-  <br/>空格或换行
+  <br/>balabala
 
 - 为什么模板必须是单根节点？
   <br/>源码中 patch 方法中无法处理多根节点
 
 - 循环时为什么要写 key
 
-### 流程
+### 流程概览
 
 4 个游标分别代表新旧节点的首与尾，
 
@@ -227,15 +223,16 @@ balabala
 3. 若再次遇到不满足 sameType 的情况，就对游标中间的元素进行 diff（传统 diff）
 4. 最后进行扫尾工作，即如果新旧节点数量不同的情况，若剩下的是新节点，则表示要增加的内容，若剩下的是旧节点，则表示要删除的内容
 
-### 细节
+### 细节探究
 
-#### 首次创建与组件更新的区别
+#### update：首次创建与组件更新
 
 首次创建和组件更新都走都是`__patch__`方法
 
+核心代码：
+
 ```javascript
 const prevVnode = vm._vnode;
-const restoreActiveInstance = setActiveInstance(vm);
 vm._vnode = vnode;
 // Vue.prototype.__patch__ is injected in entry points
 // based on the rendering backend used.
@@ -248,71 +245,73 @@ if (!prevVnode) {
 }
 ```
 
-prevVnode 不存在，调用 `createElm` 创建一整棵树，在当前节点的 `nextSibling` 添加新节点，此时如果在 `debug`， 会看到页面上出现了两个节点，后续会删除旧节点保留新节点
-
 #### patch 做了哪些事情？
 
 位置：`core/vdom/patch.js`
 通过`createPatchFunction`这个工厂函数返回一个真正的`patch`
 
-- 1. 首先进行树级别的比较
+核心代码：
 
-  - newVnode 不存在 **删除**
-  - oldVnode 不存在 **新增**
-  - newVnode 与 oldVnode 都存在
-
-    - 1.1. oldVnode 是**真实 dom**，也就是`init`阶段
-    - 1.2. 都是`vnode` **patchVnode**
-
-    核心代码：
-
-    ```javascript
-    return function patch(oldVnode, vnode, hydrating, removeOnly) {
-      if (isUndef(oldVnode)) {
-      } else {
-        const isRealElement = isDef(oldVnode.nodeType);
-        if (!isRealElement && sameVnode(oldVnode, vnode)) {
-          // patch existing root node
-          // 更新逻辑
-          patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
-        } else {
-          // 初始化逻辑
-          if (isRealElement) {
-            // either not server-rendered, or hydration failed.
-            // create an empty node and replace it
-            oldVnode = emptyNodeAt(oldVnode);
-          }
-
-          // 真实dom
-          const oldElm = oldVnode.elm;
-          const parentElm = nodeOps.parentNode(oldElm);
-
-          // 创建一整棵树
-          createElm(
-            vnode,
-            insertedVnodeQueue,
-            // extremely rare edge case: do not insert if old element is in a
-            // leaving transition. Only happens when combining transition +
-            // keep-alive + HOCs. (#4590)
-            oldElm._leaveCb ? null : parentElm,
-            nodeOps.nextSibling(oldElm)
-          );
-
-          // 此时界面上新旧dom都存在
-
-          // 删除老节点
-          if (isDef(parentElm)) {
-            removeVnodes([oldVnode], 0, 0);
-          } else if (isDef(oldVnode.tag)) {
-            invokeDestroyHook(oldVnode);
-          }
-        }
+```javascript
+return function patch(oldVnode, vnode, hydrating, removeOnly) {
+  if (isUndef(oldVnode)) {
+  } else {
+    const isRealElement = isDef(oldVnode.nodeType);
+    if (!isRealElement && sameVnode(oldVnode, vnode)) {
+      // patch existing root node
+      // 更新逻辑
+      patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
+    } else {
+      // 初始化逻辑
+      if (isRealElement) {
+        // either not server-rendered, or hydration failed.
+        // create an empty node and replace it
+        oldVnode = emptyNodeAt(oldVnode);
       }
 
-      invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch);
-      return vnode.elm;
-    };
-    ```
+      // 真实dom
+      const oldElm = oldVnode.elm;
+      const parentElm = nodeOps.parentNode(oldElm);
+
+      // 创建一整棵树
+      createElm(
+        vnode,
+        insertedVnodeQueue,
+        // extremely rare edge case: do not insert if old element is in a
+        // leaving transition. Only happens when combining transition +
+        // keep-alive + HOCs. (#4590)
+        oldElm._leaveCb ? null : parentElm,
+        nodeOps.nextSibling(oldElm)
+      );
+
+      // 此时界面上新旧dom都存在
+
+      // 删除老节点
+      if (isDef(parentElm)) {
+        removeVnodes([oldVnode], 0, 0);
+      } else if (isDef(oldVnode.tag)) {
+        invokeDestroyHook(oldVnode);
+      }
+    }
+  }
+
+  invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch);
+  return vnode.elm;
+};
+```
+
+首先进行树级别的比较
+
+- newVnode 不存在 **删除**
+- oldVnode 不存在 **新增**
+- newVnode 与 oldVnode 都存在
+
+  - 1.1. oldVnode 是**真实 dom**，也就是`init`阶段
+
+    1. init 阶段：创建新树，销毁旧树
+       <br>在`update`中，`oldVnode`以**真实 dom**的形式传进来，因此走了`patch`中的另一个分支，调用 `createElm` 创建一整棵树，在当前节点的 `nextSibling` 添加新节点，此时如果在 `debug`， 会看到页面上出现了两个节点，后续会删除旧节点保留新节点，至此，init 阶段结束
+
+  - 1.2. 都是`vnode` **patchVnode**
 
 #### patchVnode：diff 发生的地方
 
@@ -566,9 +565,17 @@ export function createPatchFunction(backend) {
 }
 ```
 
-#### 为什么不推荐用 `index` 作 `key`
+#### 2. 为什么不推荐用 `index` 作 `key`
 
 列表重排序会报错
 
 比如：
 当列表中出现删除场景时，因为 `sameType` 的策略是首先比较 `key`，被删除节点后面的 `dom`，由于 `key(index)` 也发生了改变，就会被判定为 `dom` 发生了改变，首先造成的影响就是 diff 流程变复杂，如果列表并没有太复杂，造成不了太多性能的损耗，但是继续思考，如果那些没有改变的 `dom`，很不幸操作了一些非响应式引起的变化，比如改变 `style`，或通过 `css` 弹出了 `Popover`，那么当前更新时就会覆盖这些非响应式变化，让用户体验不好，或者误以为产生了 bug
+
+#### 3. 不适合的场景
+
+游戏画面需要频繁渲染，此时如果使用虚拟 dom，cpu 会持续占用造成卡顿，因此不适合游戏场景
+
+#### 4. children 中有个 VNode 怎么是 undefined？
+
+空格或换行
