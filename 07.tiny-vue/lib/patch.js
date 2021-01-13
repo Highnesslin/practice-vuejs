@@ -95,14 +95,15 @@ function patchVnode(oldVnode, vnode) {
 }
 
 function updateChildren(parentElm, oldCh, newCh) {
-  if (!oldCh || !newCh) return;
+  // if (!oldCh || !newCh) return;
+  console.log('update', oldCh, newCh);
+
   // todo 1.1.头头
   // todo 1.2.尾尾
   // todo 1.3.头尾
   // todo 1.4.尾头
-  // 2.  乱序
-  // 老数组长则批量删，新数组长则批量增
-  const len = Math.max(oldCh.length, newCh.length);
+  // 2.  乱序情况下的处理
+  const len = Math.min(oldCh.length, newCh.length);
   for (let i = 0; i < len; i++) {
     const oldChild = oldCh[i];
     const newChild = newCh[i];
@@ -131,5 +132,19 @@ function updateChildren(parentElm, oldCh, newCh) {
       }
     }
   }
-  // todo 遍历找到两个节点
+  // 3.扫尾工作，两节点不一样长的情况
+  if (newCh.length > len) {
+    // 新节点长：新增
+    const rest = newCh.slice(len);
+    rest.forEach(v => {
+      const child = createElm(v);
+      parentElm.appendChild(child);
+    });
+  } else if (oldCh.length > len) {
+    // 旧节点长：删除
+    const rest = oldCh.slice(len);
+    rest.forEach(child => {
+      parentElm.removeChild(child.el);
+    });
+  }
 }

@@ -27,30 +27,54 @@
             id: 1,
             name: 'Lin',
           },
+          arr: [
+            {
+              num: 1,
+            },
+            {
+              num: 2,
+            },
+            {
+              num: 3,
+            },
+          ],
         },
         render(h) {
-          return h('div', null, [
-            h('p', null, [this.count]),
-            h('p', null, [this.count * 2]),
-            h('p', null, 'detail'),
-            h('ul', null, [
-              h('li', null, this.detail.id),
-              h('li', null, this.detail.name),
-              h('li', null, this.detail.address),
-            ]),
-          ]);
+          // return h('div', null, [
+          //   h('p', null, [this.count]),
+          //   h('p', null, [this.count * 2]),
+          //   h('p', null, 'detail'),
+          //   h('ul', null, [
+          //     h('li', null, this.detail.id),
+          //     h('li', null, this.detail.name),
+          //     h('li', null, this.detail.address),
+          //   ]),
+          //   h(
+          //     'ul',
+          //     null,
+          //     this.arr.map(item => h('li', null, item.num))
+          //   ),
+          // ]);
+          return h(
+            'ul',
+            null,
+            this.arr.map(item => h('li', null, item.num))
+          );
         },
       });
-      setTimeout(() => {
-        const p = document.querySelector('p');
-        app.count++;
-        app.$nextTick(() => {
-          console.log('nextTick', p.innerHTML); // 3
-        });
-        app.count++;
-        app.count++;
-        app.$set(app.detail, 'address', '浙江省杭州市西湖区');
-      }, 2000);
+      // setTimeout(() => {
+      //   const p = document.querySelector('p');
+      //   app.count++;
+      //   app.$nextTick(() => {
+      //     console.log('nextTick', p.innerHTML); // 3
+      //   });
+      //   app.count++;
+      //   app.count++;
+      //   app.$set(app.detail, 'address', '浙江省杭州市西湖区');
+      // }, 2000);
+      app.arr.push({
+        num: 666,
+      });
     </script>
   </body>
 </html>

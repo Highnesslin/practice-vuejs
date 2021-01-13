@@ -1,26 +1,34 @@
+import { arrayMethods } from './array.js';
 import Dep from './Dep.js';
 import { def } from './utils.js';
 
 class Observer {
-  constructor(data) {
-    this.value = data;
+  constructor(value) {
+    this.value = value;
 
-    // + 对象的dep，用于set时使用
     this.dep = new Dep();
     // 指定ob实例
-    def(data, '__ob__', this);
+    def(value, '__ob__', this);
 
-    if (Array.isArray(data)) {
-      // todo 数组的处理
+    if (Array.isArray(value)) {
+      // 覆盖原型方法
+      value.__proto__ = arrayMethods;
+      this.observeArray(value);
     } else {
-      this.walk();
+      this.walk(value);
     }
   }
 
-  walk() {
-    Object.keys(this.value).forEach(key => {
-      defineReactive(this.value, key, this.value[key]);
+  walk(value) {
+    Object.keys(value).forEach(key => {
+      defineReactive(value, key, value[key]);
     });
+  }
+
+  observeArray(arr) {
+    for (let i = 0, l = arr.length; i < l; i++) {
+      observe(arr[i]);
+    }
   }
 }
 
@@ -35,9 +43,9 @@ export function defineReactive(obj, key, val) {
         dep.depend();
         if (childOb) {
           childOb.dep.depend();
-          // if (Array.isArray(value)) {
-          //   dependArray(value)
-          // }
+          if (Array.isArray(val)) {
+            dependArray(val);
+          }
         }
       }
       return val;
@@ -56,14 +64,21 @@ export function defineReactive(obj, key, val) {
 export function observe(value) {
   if (value === null || typeof value !== 'object') return;
 
-  // +
   let ob;
   if (value.__ob__ && value.__ob__ instanceof Observer) {
-    // 如果有直接复用
     ob = value.__ob__;
   } else {
-    // 初始化创建一次
     ob = new Observer(value);
   }
   return ob;
+}
+
+function dependArray(value) {
+  for (let e, i = 0, l = value.length; i < l; i++) {
+    e = value[i];
+    e && e.__ob__ && e.__ob__.dep.depend();
+    if (Array.isArray(e)) {
+      dependArray(e);
+    }
+  }
 }
