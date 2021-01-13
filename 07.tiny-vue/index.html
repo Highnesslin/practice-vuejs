@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tiny vue</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      li {
+        margin-left: 10px;
+        list-style: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import Vue from './lib/Vue.js';
+      window.app = new Vue({
+        el: '#app',
+        data: {
+          count: 0,
+          detail: {
+            id: 1,
+            name: 'Lin',
+          },
+        },
+        render(h) {
+          return h('div', null, [
+            h('p', null, [this.count]),
+            h('p', null, [this.count * 2]),
+            h('p', null, 'detail'),
+            h('ul', null, [
+              h('li', null, this.detail.id),
+              h('li', null, this.detail.name),
+              h('li', null, this.detail.address),
+            ]),
+          ]);
+        },
+      });
+      setTimeout(() => {
+        const p = document.querySelector('p');
+        app.count++;
+        app.$nextTick(() => {
+          console.log('nextTick', p.innerHTML); // 3
+        });
+        app.count++;
+        app.count++;
+        app.$set(app.detail, 'address', '浙江省杭州市西湖区');
+      }, 2000);
+    </script>
+  </body>
+</html>
