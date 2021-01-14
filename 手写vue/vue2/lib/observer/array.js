@@ -1,4 +1,4 @@
-import { def } from './utils.js';
+import { def } from '../utils.js';
 
 // 获取数组原型
 const arrayProto = Array.prototype;

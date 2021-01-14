@@ -1,9 +1,8 @@
-import Dep from './Dep.js';
+import Dep from './dep.js';
 import { queueWatcher } from './schedular.js';
 
 export default class Watcher {
   constructor(vm, updateFn) {
-    //
     this.vm = vm;
     this.getter = updateFn;
 

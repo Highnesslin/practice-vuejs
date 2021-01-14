@@ -1,11 +1,12 @@
 import { arrayMethods } from './array.js';
-import Dep from './Dep.js';
-import { def } from './utils.js';
+import Dep from './dep.js';
+import { def } from '../utils.js';
 
 class Observer {
   constructor(value) {
     this.value = value;
 
+    // 对象的dep，用于set时触发响应式
     this.dep = new Dep();
     // 指定ob实例
     def(value, '__ob__', this);
@@ -53,24 +54,11 @@ export function defineReactive(obj, key, val) {
     set(newVal) {
       if (val !== newVal) {
         val = newVal;
-
         childOb = observe(newVal);
-
         dep.notify();
       }
     },
   });
-}
-export function observe(value) {
-  if (value === null || typeof value !== 'object') return;
-
-  let ob;
-  if (value.__ob__ && value.__ob__ instanceof Observer) {
-    ob = value.__ob__;
-  } else {
-    ob = new Observer(value);
-  }
-  return ob;
 }
 
 function dependArray(value) {
@@ -81,4 +69,16 @@ function dependArray(value) {
       dependArray(e);
     }
   }
+}
+
+export function observe(value) {
+  if (value === null || typeof value !== 'object') return;
+
+  let ob;
+  if (value.__ob__ && value.__ob__ instanceof Observer) {
+    ob = value.__ob__;
+  } else {
+    ob = new Observer(value);
+  }
+  return ob;
 }

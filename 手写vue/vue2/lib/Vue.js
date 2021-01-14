@@ -1,7 +1,8 @@
-import { defineReactive, observe } from './Observer.js';
-import patch from './patch.js';
-import Watcher from './Watcher.js';
-import { nextTick } from './schedular.js';
+import { defineReactive, observe } from './observer/index.js';
+import patch from './vdom/patch.js';
+import Watcher from './observer/watcher.js';
+import { nextTick } from './observer/schedular.js';
+import createElement from './vdom/createElement.js';
 
 export default class Vue {
   constructor(options) {
@@ -35,25 +36,12 @@ export default class Vue {
   }
 
   _render() {
-    return this.$options.render.call(this, this.createElement);
-  }
-
-  createElement(tag, attrs, children) {
-    children = Array.isArray(children)
-      ? children.map(v => {
-          return typeof v === 'number' ? String(v) : v;
-        })
-      : typeof children === 'number'
-      ? String(children)
-      : children;
-
-    children = typeof children === 'number' ? String(children) : children;
-    return { tag, attrs, children };
+    return this.$options.render.call(this, this.$createElement);
   }
 
   update(vnode) {
     const prevVnode = this._vnode;
-    //
+    // 每次update都保存一份虚拟dom
     this._vnode = vnode;
 
     if (!prevVnode) {
@@ -61,6 +49,7 @@ export default class Vue {
       this.__patch__(this.$el, vnode);
     } else {
       // update
+      console.log(prevVnode, vnode);
       this.__patch__(prevVnode, vnode);
     }
   }
@@ -69,6 +58,8 @@ export default class Vue {
 Vue.prototype.__patch__ = patch;
 
 Vue.prototype.$nextTick = nextTick;
+
+Vue.prototype.$createElement = createElement;
 
 Vue.prototype.$set = function (obj, key, val) {
   const ob = obj.__ob__;

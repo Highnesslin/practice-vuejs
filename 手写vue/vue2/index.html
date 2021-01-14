@@ -16,6 +16,7 @@
     </style>
   </head>
   <body>
+    <button id="btn">add arr</button>
     <div id="app"></div>
     <script type="module">
       import Vue from './lib/Vue.js';
@@ -40,26 +41,21 @@
           ],
         },
         render(h) {
-          // return h('div', null, [
-          //   h('p', null, [this.count]),
-          //   h('p', null, [this.count * 2]),
-          //   h('p', null, 'detail'),
-          //   h('ul', null, [
-          //     h('li', null, this.detail.id),
-          //     h('li', null, this.detail.name),
-          //     h('li', null, this.detail.address),
-          //   ]),
-          //   h(
-          //     'ul',
-          //     null,
-          //     this.arr.map(item => h('li', null, item.num))
-          //   ),
-          // ]);
-          return h(
-            'ul',
-            null,
-            this.arr.map(item => h('li', null, item.num))
-          );
+          return h('div', null, [
+            h('p', null, [this.count]),
+            h('p', null, [this.count * 2]),
+            h('p', null, 'detail'),
+            h('ul', null, [
+              h('li', null, this.detail.id),
+              h('li', null, this.detail.name),
+              h('li', null, this.detail.address),
+            ]),
+            h(
+              'ul',
+              null,
+              this.arr.map(item => h('li', null, item.num))
+            ),
+          ]);
         },
       });
       // setTimeout(() => {
@@ -72,9 +68,10 @@
       //   app.count++;
       //   app.$set(app.detail, 'address', '浙江省杭州市西湖区');
       // }, 2000);
-      app.arr.push({
-        num: 666,
-      });
+      document.querySelector('#btn').onclick = () =>
+        app.arr.push({
+          num: Date.now(),
+        });
     </script>
   </body>
 </html>

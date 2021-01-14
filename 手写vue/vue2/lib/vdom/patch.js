@@ -1,12 +1,12 @@
-import { isDef } from './utils.js';
+import { isDef } from '../utils.js';
 
 export default function patch(oldVnode, vnode) {
-  // 1. 旧节点不存在：新增
+  // todo 1. 旧节点不存在：新增
   if (!oldVnode) {
     // 新增
     return;
   }
-  // 2. 新节点不存在：删除
+  // todo 2. 新节点不存在：删除
   if (!vnode) {
     // 删除
     return;
@@ -14,20 +14,14 @@ export default function patch(oldVnode, vnode) {
   // 3. 新旧节点存在
   //  3.1. 旧节点是真实dom：init
   if (isDef(oldVnode.nodeType)) {
-    // const parentElm = oldVnode;
-    // vnode.elm = oldVnode;
-    // createElm(vnode, parentElm);
-    // +
     const parent = oldVnode.parentElement;
     const refElm = oldVnode.nextSibling;
+
     // 递归创建dom树
     const el = createElm(vnode);
 
     parent.insertBefore(el, refElm);
     parent.removeChild(oldVnode);
-
-    // 保存vnode
-    this._vnode = vnode;
   } else {
     //  3.2. 都是虚拟dom：diff
     patchVnode(oldVnode, vnode);
@@ -49,12 +43,11 @@ function createElm(vnode) {
   } else {
     el.textContent = vnode.children;
   }
-  //+
   vnode.el = el;
   return el;
 }
 
-// 正在写的这里
+// 虚拟dom的diff过程
 function patchVnode(oldVnode, vnode) {
   if (oldVnode === vnode) {
     return;
@@ -62,7 +55,7 @@ function patchVnode(oldVnode, vnode) {
 
   const el = (vnode.el = oldVnode.el);
 
-  // 属性
+  // todo 属性diff
 
   // 文本
   const oldCh = oldVnode.children;
@@ -94,14 +87,9 @@ function patchVnode(oldVnode, vnode) {
   }
 }
 
-function updateChildren(parentElm, oldCh, newCh) {
-  // if (!oldCh || !newCh) return;
-  console.log('update', oldCh, newCh);
-
-  // todo 1.1.头头
-  // todo 1.2.尾尾
-  // todo 1.3.头尾
-  // todo 1.4.尾头
+// diff children
+function updateChildren(parentElm, oldCh = [], newCh = []) {
+  // todo 1.1.头头， 1.2.尾尾， 1.3.头尾， 1.4.尾头
   // 2.  乱序情况下的处理
   const len = Math.min(oldCh.length, newCh.length);
   for (let i = 0; i < len; i++) {
