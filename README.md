@@ -11,15 +11,22 @@
 
 ### 批量异步更新
 
-- `watcher.update` => `queueWatcher` => `nextTick`(向 callbacks 中添加`flushCallbacks`) => `timerFunc` => `_update`
+- `watcher.update` => `queueWatcher` => `queue.push(watcher)` + `nextTick`(向 `callbacks` 中添加`flushCallbacks`) => `timerFunc` => `promise.resolve().then(flushCallbacks)`
 
 ### 虚拟 dom
 
-`_update` => `__patch__` => `createEle` 和 `patchVnode`
+`_update` => `__patch__` => `createElm` 和 `patchVnode`
 
 - `_update`： 初始化 or 更新
 - `__patch__`： 树级别的比较：old 没有/new 没有/都存在：old 是真实 dom/都是虚拟 dom
-- `patchVnode`： 同层比较，深度优先 + 属性 文本 children + (头头/尾尾/头尾/尾头/)乱序/收尾
+- `patchVnode`： 同层比较，深度优先 + 属性 文本 children
+- `updateChildren`：(头头/尾尾/头尾/尾头/) + 乱序 + 收尾
+
+### 组件化
+
+1. 定义：`Vue.component` => `Vue.extend获取VueComponent` => 添加到`Vue.options.components`中
+2. 初始化：`createElement` => `createComponent` => `__patch__` => `createElm` => `createComponent` => 执行钩子
+3. 更新：递归到组件的时候执行钩子函数
 
 ## Vue3
 
