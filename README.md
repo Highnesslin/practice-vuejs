@@ -1,6 +1,6 @@
 ## Vue2
 
-### 初始化流程(new Vue 发生肾摸事了)
+### 初始化流程
 
 初始化属性、全局方法、监听事件等等 => `$mount` => `mountComponent` => `new Watcher` 和 `_update`
 

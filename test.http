@@ -1,0 +1,6 @@
+POST http://192.168.50.230:8019/blade-auth/oauth/token
+content-type: application/x-www-form-urlencoded
+Tenant-Id: 000001
+Authorization: Basic c3dvcmQ6c3dvcmRfc2VjcmV0
+
+grant_type=password&scope=all&username=13967193300&password=7de6734b167f7560730e2ede447bca50&tenantId=000001
