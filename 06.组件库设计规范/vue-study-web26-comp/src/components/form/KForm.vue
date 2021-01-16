@@ -26,6 +26,7 @@ export default {
       const results = this.$children
         .filter((item) => item.prop)
         .map((item) => item.validate());
+      console.log("results", results);
       // 2.判断校验结果
       Promise.all(results)
         .then(() => cb(true))
