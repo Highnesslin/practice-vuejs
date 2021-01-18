@@ -5,24 +5,24 @@
     <!-- <Communication></Communication> -->
     <!-- 表单 -->
     <!-- <FormExample></FormExample> -->
-    <Form2Example />
     <!-- 插槽 -->
     <!-- <SlotExample></SlotExample> -->
     <!-- 递归 -->
     <!-- <TreeExample></TreeExample> -->
+    <!-- 表格 -->
+    <Tablexample />
   </div>
 </template>
 
 <script>
-import Communication from "@/components/communication";
+import Communication from "comps/communication";
 import FormExample from "@/components/form";
 import SlotExample from "@/components/slots";
 import TreeExample from "@/components/recursion";
-
-import Form2Example from "@/components/ElForm";
+import Tablexample from "@/components/table";
 
 export default {
-  name: "Example",
+  name: "HelloWorld",
   props: {
     msg: String,
   },
@@ -31,7 +31,7 @@ export default {
     FormExample,
     SlotExample,
     TreeExample,
-    Form2Example,
+    Tablexample,
   },
 };
 </script>

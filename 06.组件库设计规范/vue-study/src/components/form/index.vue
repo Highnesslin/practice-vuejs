@@ -1,5 +1,7 @@
 <template>
   <div>
+    <!-- <ElementTest></ElementTest> -->
+
     <!-- KForm -->
     <KForm :model="model" :rules="rules" ref="loginForm">
       <KFormItem label="用户名" prop="username">
@@ -13,6 +15,7 @@
 </template>
 
 <script>
+import ElementTest from "@/components/form/ElementTest.vue";
 import KInput from "@/components/form/KInput.vue";
 import KFormItem from "@/components/form/KFormItem.vue";
 import KForm from "@/components/form/KForm.vue";
@@ -21,6 +24,7 @@ import KForm from "@/components/form/KForm.vue";
 
 export default {
   components: {
+    ElementTest,
     KInput,
     KFormItem,
     KForm,

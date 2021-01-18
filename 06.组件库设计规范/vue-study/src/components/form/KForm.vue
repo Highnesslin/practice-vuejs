@@ -1,35 +1,33 @@
 <template>
-  <form>
-    <slot />
-  </form>
+  <div>
+    <slot></slot>
+  </div>
 </template>
 
 <script>
 export default {
   provide() {
     return {
-      form: this.model,
-      rules: this.rules,
+      form: this,
     };
   },
   props: {
     model: {
       type: Object,
-      require: true,
+      required: true,
     },
-    rules: {
-      type: Object,
-      default: () => {
-        return {};
-      },
-    },
+    rules: Object,
   },
   methods: {
+    // 全局校验
     validate(cb) {
-      const promise = this.$children
+      // 1.执行全部Item校验
+      // 结果【Promise，。。。】
+      const results = this.$children
         .filter((item) => item.prop)
         .map((item) => item.validate());
-      Promise.all(promise)
+      // 2.判断校验结果
+      Promise.all(results)
         .then(() => cb(true))
         .catch(() => cb(false));
     },
@@ -37,5 +35,4 @@ export default {
 };
 </script>
 
-<style>
-</style>
+<style scoped></style>
