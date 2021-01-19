@@ -1,12 +1,14 @@
 <template>
   <el-table :columns="columns" :data="data">
     <template v-slot:sex="row">
-      {{ row.text === 1 ? "男" : "女" }}
+      {{ row.sex === 1 ? "男" : "女" }}
     </template>
     <template v-slot:handle="row">
       <div style="display: flex">
-        <button @click="edit(row)" style="margin-right: 10px">修改</button>
-        <button @click="del(row)">删除</button>
+        <button class="el-button" @click="edit(row)" style="margin-right: 10px">
+          修改
+        </button>
+        <button class="el-button" @click="del(row)">删除</button>
       </div>
     </template>
   </el-table>
