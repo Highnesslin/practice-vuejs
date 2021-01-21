@@ -7,9 +7,9 @@
   </head>
   <body>
     <div id="app">{{count}}</div>
-    <script src="./vue.js"></script>
-    <script>
-      Vue.createApp({
+    <script type="module">
+      import {createApp} from "./lib/vue.js"
+      createApp({
         data() {
           return {
             count: 1,

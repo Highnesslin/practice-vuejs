@@ -1,5 +1,10 @@
 # 初始化流程
 
+vue3 相对 vue2 是一次重构，分为 **compiler**、**reactivity**、**runtime**，将来在做自定义渲染时只需要基于 **compiler** 和 **runtime** 两个 `core` 模块进行扩展即可
+于是就引申出了一个概念：**renderer**，意为**渲染器**，是应用的入口，来自 `runtime` 模块
+
+[初始化](http://shymean.com/article/Vue3%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E2%80%94%E2%80%94%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B%E5%92%8C%E7%BB%84%E5%90%88%E5%BC%8FAPI)
+
 ## createApp
 
 - 作用
@@ -207,3 +212,10 @@ const patch: PatchFn = (
     }
   }
 ```
+
+## 思考与总结
+
+1. `renderer`包含三部分
+   - 1. render
+   - 2. hydrate
+   - 3. createApp

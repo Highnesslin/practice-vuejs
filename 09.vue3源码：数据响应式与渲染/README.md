@@ -230,3 +230,25 @@ createApp => ensureRenderer => (renderer = createRenderer) => baseCreateRenderer
 这里进到`processComponent`中执行`mountComponent`，
 中间有个方法`setupComponent(instance)`，这相当于**Vue2**的`this._init`
 `setupRenderEffect`
+
+## effect
+
+effect 包括的函数在执行时会触发**getter**，将当前函数收集到依赖中（ps：effect 相当于原来的 Watcher）
+
+## 思考与总结
+
+1. 流程梳理
+
+- 修改响应式的值，触发 `effect` 的回调函数（触发依赖）；
+- 再次调用 `render` 函数，获取最新的 `vnode` 值；
+- 把新的 vnode 和旧的 vnode ，交给 `patch`；
+- `patch` 来基于 vnode 的 **类型** 进行处理具体的 **update** 逻辑；
+- 如果是 **component** 类型的话，会做一个 updateComponent() 的处理，检测是否可更新（`shouldUpdateComponent`），如果可以更新的话会再次调用 update；
+- 如果是 **element** 类型的话，会调用 `patchElement` 来检测更新；
+- 接着就是递归的调用当前组件的 `render`，获取到最新的 **subTree（vnode）**；
+- 重复上面的过程。
+
+- 我们稍微隐喻一下，如果是 `component` 类型的话，我们就需要检测要不要开箱，
+- 当需要开箱的话，再处理箱子里面的 `element` 或者 `component`，
+- 如果是 `component` 那么就重复上面的过程。应该是递归的向下查，截止点就是当前的 `component` 能不能开箱。
+- 好，这个流程整理完了，怎么对比细节，我们先不管，先把整个流程在 mini-vue 里面实现一遍，看看有没有逻辑落下。
