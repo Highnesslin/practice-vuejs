@@ -3,6 +3,7 @@ review
 
 # 写在前面
 
+[预习](https://www.mk2048.com/blog/blog_hjabaiii1aaaa.html)
 vue3 的响应式原理同样焕然一新，
 
 1. 用 proxy 代替 Object.defineProperty
@@ -14,7 +15,12 @@ vue3 的响应式原理同样焕然一新，
 
    - targetMap: 相当于发布订阅中心，以树结构管理对象、key 与依赖之间的关系
 
-#
+## 流程概述
+
+1. 初始化时创建响应式对象，建立 `getter`、`setter` 拦截，`getter`负责收集依赖，`setter`负责触发依赖
+2. 调用组件级的`effect`方法，
+
+##
 
 缺点
 

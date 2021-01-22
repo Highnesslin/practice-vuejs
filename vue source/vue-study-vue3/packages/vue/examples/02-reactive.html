@@ -1,0 +1,20 @@
+<div id="app">
+  <p>{{state.count}}</p>
+  <button @click="add">add</button>
+</div>
+
+<script src="../dist/vue.global.js"></script>
+<script>
+  const { createApp, reactive } = Vue
+  const app = createApp({
+    setup() {
+      const state = reactive({
+        count: 0,
+      })
+      const add = () => {
+        state.count++
+      }
+      return { state, add }
+    },
+  }).mount('#app')
+</script>

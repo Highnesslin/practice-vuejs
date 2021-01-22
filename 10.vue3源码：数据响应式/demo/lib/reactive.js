@@ -19,8 +19,8 @@ function reactive(obj) {
     },
   });
 }
-
-window.effectStack = [];
+//
+const effectStack = [];
 
 function effect(fn) {
   const e = createReactiveEffect(fn);
@@ -40,7 +40,7 @@ function createReactiveEffect(fn) {
   return effect;
 }
 
-window.targetMap = new WeakMap();
+const targetMap = new WeakMap();
 
 // 依赖追踪
 function track(target, key) {
