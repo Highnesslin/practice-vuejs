@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app">
+      <p id="count"></p>
+      <p id="detailName"></p>
+    </div>
+    <script src="./lib/reactive.js"></script>
+    <script>
+      const state = reactive({
+        count: 0,
+        detail: {
+          id: 1,
+          name: 'LL',
+        },
+      });
+
+      // 用户effect
+      effect(() => {
+        console.log('effect1', state.count);
+      });
+      effect(() => {
+        console.log('effect2', state.detail.name);
+      });
+
+      // 组件effect
+      effect(() => {
+        count.innerHTML = state.count;
+        detailName.innerHTML = state.detail.name;
+      });
+    </script>
+  </body>
+</html>

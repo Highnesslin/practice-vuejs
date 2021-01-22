@@ -1,3 +1,11 @@
+# vue3 源码架构
+
+多模块架构
+
+- compiler-dom compiler-core
+- runtime-dom runtime-core
+- reactivity
+
 # 初始化流程
 
 vue3 相对 vue2 是一次重构，分为 **compiler**、**reactivity**、**runtime**，将来在做自定义渲染时只需要基于 **compiler** 和 **runtime** 两个 `core` 模块进行扩展即可
@@ -16,6 +24,8 @@ vue3 相对 vue2 是一次重构，分为 **compiler**、**reactivity**、**runt
 `ensureRenderer`是一个工厂函数，返回`renderer`
 
 ## createRenderer => baseCreateRenderer
+
+这个方法很像**vue2**返回`patch`的工厂函数
 
 `baseCreateRenderer`是一个长达 1800 多行的方法，只关注最终的**返回**即可
 
@@ -219,3 +229,13 @@ const patch: PatchFn = (
    - 1. render
    - 2. hydrate
    - 3. createApp
+
+## 总结
+
+渲染器是一个对象，包含三个方法{render,hydrate,createApp}
+
+为何调整为实例化
+
+- 避免实例之间污染
+- tree-shaking
+- 语义化

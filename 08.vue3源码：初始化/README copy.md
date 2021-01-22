@@ -192,6 +192,6 @@ function createAppAPI<HostElement>(
 }
 ```
 
-ensureRenderer => createRenderer => baseCreateRenderer => 返回{render,hydrate,createApp}
-`createApp` 通过 `createAppApI` 创建
+ensureRenderer => createRenderer => baseCreateRenderer => 返回**渲染器**{render,hydrate,createApp}
+======================================================================================`createApp` 通过 `createAppApI` 创建
 app => mount => render => patch => processComponent => mountComponent => setupComponent
