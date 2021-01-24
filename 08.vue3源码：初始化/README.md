@@ -1,6 +1,6 @@
 # vue3 源码架构
 
-多模块架构
+**vue3**改用多模块架构
 
 - compiler-dom compiler-core
 - runtime-dom runtime-core
@@ -11,231 +11,589 @@
 vue3 相对 vue2 是一次重构，分为 **compiler**、**reactivity**、**runtime**，将来在做自定义渲染时只需要基于 **compiler** 和 **runtime** 两个 `core` 模块进行扩展即可
 于是就引申出了一个概念：**renderer**，意为**渲染器**，是应用的入口，来自 `runtime` 模块
 
-[初始化](http://shymean.com/article/Vue3%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E2%80%94%E2%80%94%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B%E5%92%8C%E7%BB%84%E5%90%88%E5%BC%8FAPI)
+在`runtime` 模块下我们可以扩展任意平台的渲染规则，web 平台的入口是`runtime-dom/src/index.ts`
 
-## createApp
+<!-- [初始化](http://shymean.com/article/Vue3%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E2%80%94%E2%80%94%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B%E5%92%8C%E7%BB%84%E5%90%88%E5%BC%8FAPI) -->
+
+## createApp [/packages/runtime-dom/src/index.t](https://github.com/vuejs/vue-next/blob/master/packages/runtime-dom/src/index.ts#L53)
 
 - 作用
-  1. 通过`ensureRenderer.createApp`创建 app
-  2. 扩展`$mount`方法
+
+  - 获取`renderer`（渲染器），通过**渲染器**的`createApp`方法创建**app 对象**
+  - 扩展`mount`方法
+
+- 核心源码
+
+```typescript
+const createApp = ((...args) => {
+  const app = ensureRenderer().createApp(...args);
+
+  const { mount } = app;
+  app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
+    const container = normalizeContainer(containerOrSelector);
+    if (!container) return;
+
+    // 挂载前先清空dom的内容
+    container.innerHTML = '';
+    // 调用原本的mount方法进行挂载
+    const proxy = mount(container);
+
+    return proxy;
+  };
+
+  return app;
+}) as CreateAppFunction<Element>;
+```
 
 ## ensureRenderer
 
-`ensureRenderer`是一个工厂函数，返回`renderer`
+- 作用
 
-## createRenderer => baseCreateRenderer
+  - 返回 **单例** **渲染器**
 
-这个方法很像**vue2**返回`patch`的工厂函数
+- 核心源码
 
-`baseCreateRenderer`是一个长达 1800 多行的方法，只关注最终的**返回**即可
+  ```typescript
+  function ensureRenderer() {
+    return renderer || (renderer = createRenderer<Node, Element>(rendererOptions));
+  }
+  ```
 
-```javascript
-function baseCreateRenderer(
-  options: RendererOptions,
-  createHydrationFns?: typeof createHydrationFunctions
-): any {
+  `ensureRenderer`通过`createRenderer`创建**渲染器**，而`createRenderer`的代码也很简单，直接调用了`baseCreateRenderer`
+
+  ```typescript
+  function createRenderer<HostNode = RendererNode, HostElement = RendererElement>(
+    options: RendererOptions<HostNode, HostElement>
+  ) {
+    return baseCreateRenderer<HostNode, HostElement>(options);
+  }
+  ```
+
+  之所以再调用一次`baseCreateRenderer`，是为了通过参数`options`注入**web 平台**特有的操作**dom**和**属性**的方法。
+  `createRenderer`和`baseCreateRenderer`这两个方法都在`runtime-core`模块下，属于**核心渲染器的逻辑**，这里的操作不会掺杂任何平台的方法，而是让开发者通过参数进行注入，可以做到很好的**扩展性**
+
+## baseCreateRenderer
+
+- 作用
+  - 返回真正的渲染器`renderer`
+- 核心源码
+
+  ```typescript
+  function baseCreateRenderer(
+    options: RendererOptions,
+    createHydrationFns?: typeof createHydrationFunctions
+  ): any {
+
+    // 取出平台特有的方法，这里太占空间，暂时不贴了，主要是insert、remove、patchProp等等
+    const {...} = options
+
+    // 接下来是很多组件渲染和diff的方法
+    const patch = (n1, n2, container, ...) => {...}
+    const processElement = (n1, n2, container) => {...}
+    const mountElement = (vnode, container, ...) => {...}
+    const mountChildren = (children, container, ...) => {...}
+    ...
+
+    const render: RootRenderFunction = (vnode, container) => {
+      if (vnode == null) {
+        if (container._vnode) {
+          unmount(container._vnode, null, null, true);
+        }
+      } else {
+        // 初始化和更新都走这里，类似vue2的__patch__
+        patch(container._vnode || null, vnode, container);
+      }
+      container._vnode = vnode;
+    };
+
+    return {
+      render,
+      hydrate,
+      createApp: createAppAPI(render, hydrate),
+    };
+  }
+  ```
+
+  **渲染器**包括`render`、`hydrate`、`createApp`三个方法，<br>
+  并且在这里定义了很多**渲染**和**更新**相关的方法，**非常重要**。<br>
+  其中`render`方法类似于**vue2**的`vm._update`，负责**初始化**和**更新**
+
+  由于`baseCreateRenderer`是一个长达 1800 多行的方法，**初始化时**只关注最终返回的**渲染器**即可，<br>
+  这里的`createApp`由工厂函数`createAppAPI`创建
+
+## createAppAPI
+
+- 作用
+
+  - 返回一个真正的`createApp`方法，用于创建真正的**app 实例**，也就是**Vue 实例**
+
+- 核心源码
+
+  ```typescript
+  function createAppAPI<HostElement>(
+    render: RootRenderFunction,
+    hydrate?: RootHydrateFunction
+  ): CreateAppFunction<HostElement> {
+    return function createApp(rootComponent, rootProps = null) {
+      const app = {
+        use(plugin: Plugin, ...options: any[]) {
+          plugin.install(app, ...options);
+          return app;
+        },
+
+        mixin(mixin: ComponentOptions) {
+          context.mixins.push(mixin);
+          return app;
+        },
+
+        component(name: string, component?: Component): any {
+          context.components[name] = component;
+          return app;
+        },
+
+        directive(name: string, directive?: Directive) {
+          context.directives[name] = directive;
+          return app;
+        },
+        mount(rootContainer: HostElement, isHydrate?: boolean): any {
+          ...
+        },
+        unmount() {
+          if (isMounted) {
+            render(null, app._container);
+          }
+        },
+        provide(key, value) {
+          context.provides[key as string] = value;
+          return app;
+        },
+      };
+      return app;
+    };
+  }
+  ```
+
+  `createApp`方法内部定义**实例**上的方法`use`、`mixin`、`component`、`directive`、`mount`、`unmount`、`provide`，
+  熟悉**vue2** 的小伙伴可能会发现了，原来的**静态方法**现在都变成了**实例方法**，而且**几乎**每个方法返回**app**对象，因此可以链式调用，like this
+
+  ```javascript
+  const app = createApp({
+    setup() {
+      const state = reactive({
+        count: 0,
+      });
+      return { state };
+    },
+  })
+    .use(store)
+    .directive(transfer)
+    .mixin(cacheStore)
+    .mount('#app');
+  ```
+
+  这一步结束后**渲染器**的`createApp`方法也有了，`ensureRenderer`将**渲染器**返回给**app 实例**，然后对**实例**的`mount`方法进行扩展，进入实例**渲染阶段**。
+
+  `mount`是**渲染阶段**的入口<br>
+  核心源码如下：
+
+  ```typescript
+  mount(rootContainer: HostElement, isHydrate?: boolean): any {
+    if (!isMounted) {
+      // 初始化虚拟dom树
+      const vnode = createVNode(rootComponent as ConcreteComponent, rootProps);
+      if (isHydrate && hydrate) {
+        // 服务端渲染
+        hydrate(vnode as VNode<Node, Element>, rootContainer as any);
+      } else {
+        // 客户端渲染
+        render(vnode, rootContainer);
+      }
+      return vnode.component!.proxy;
+    }
+  }
+  ```
+
+  这里**app 实例**默认的`mount`方法相当于**Vue2**的`updateComponent`，步骤如下：
+
+  1. 获取**虚拟 dom**，
+  2. 通过`render`方法将**虚拟 dom**转成**真实 dom**
+
+### `render` [/packages/runtime-core/src/renderer.ts](https://github.com/vuejs/vue-next/blob/master/packages/runtime-core/src/renderer.ts#L2189)
+
+- 作用
+
+  - 调用`patch`进行挂载
+  - 保存一份**虚拟 dom**用于下次**diff**时使用
+
+- 核心源码
+
+  ```javascript
   const render: RootRenderFunction = (vnode, container) => {
     if (vnode == null) {
       if (container._vnode) {
         unmount(container._vnode, null, null, true);
       }
     } else {
-      // 初始化走这里，这里就类似vue2
-      // 参数1不存在则走初始化流程
-      // 参数1存在则更新流程
       patch(container._vnode || null, vnode, container);
     }
     flushPostFlushCbs();
     container._vnode = vnode;
   };
+  ```
 
+  `render`方法特别像**Vue2**的`vm._update`，是**初始化渲染**和**组件更新**的入口，均调用`patch`方法，<br>
+  由于**首次渲染**不存在**旧的虚拟 dom**，因此`n1`是`null`
+
+## patch
+
+- 作用
+  - 根据不同的**虚拟 dom**类型选择不同的处理方案，最终将**虚拟 dom**转成**真实 dom**
+- 核心源码
+
+  ```javascript
   const patch: PatchFn = (
-    n1, // 老虚拟dom
-    n2, // 新虚拟dom
-    container,
-    anchor = null,
-    parentComponent = null,
-    parentSuspense = null,
-    isSVG = false,
-    optimized = false
-  ) => {...};
-
-  return {
-    render,
-    hydrate,
-    createApp: createAppAPI(render, hydrate),
-  };
-}
-```
-
-`render`方法类似于**vue2**的`vm._update`，负责初始化和更新，内部调用 `patch` 方法将**虚拟 dom** 转成**真实 dom**，然后将当前**虚拟 dom** 保存，用于下次 **diff** 使用
-
-## createAppAPI
-
-在这里创建了 app 对象，也就是 vue，包括实例上的所有方法（use mixin component directive mount unmount provide）
-vue2 的全局方法都变成了实例方法
-
-到这里`createApp`方法中的**app 对象**就创建出来了
-因为`createApp`创建完**app**对象接下来就是扩展`mount`方法，所以要特别关注初始化时的`mount`方法
-
-```javascript
-function createAppAPI<HostElement>(
-  render: RootRenderFunction,
-  hydrate?: RootHydrateFunction
-): CreateAppFunction<HostElement> {
-    return function createApp(rootComponent, rootProps = null) {
-        mount(rootContainer: HostElement, isHydrate?: boolean): any {
-            if (!isMounted) {
-                // 初始化虚拟dom树
-                const vnode = createVNode(
-                    rootComponent as ConcreteComponent,
-                    rootProps
-                )
-
-                if (isHydrate && hydrate) {
-                    // 服务端渲染
-                    hydrate(vnode as VNode<Node, Element>, rootContainer as any)
-                } else {
-                    // 客户端渲染
-                    render(vnode, rootContainer)
-                }
-                isMounted = true
-
-                return vnode.component!.proxy
-            }
-        },
-    }
-}
-```
-
-初始化时的`mount`方法：创建**虚拟 dom**，然后执行`render`，刚才已整理，`render`相当于**vue2**的`_update`，最终是调用`patch`将**虚拟 dom**转成**真实 dom**
-
-`patch`和`render`都来自`baseCreateRenderer`
-
-```javascript
-const patch: PatchFn = (
-    n1, // 老虚拟dom
-    n2, // 新虚拟dom
-    container,
-    anchor = null,
-    parentComponent = null,
-    parentSuspense = null,
-    isSVG = false,
-    optimized = false
-  ) => {
-    // patching & not same type, unmount old tree
-    if (n1 && !isSameVNodeType(n1, n2)) {
-      anchor = getNextHostNode(n1)
-      unmount(n1, parentComponent, parentSuspense, true)
-      n1 = null
-    }
-
-    if (n2.patchFlag === PatchFlags.BAIL) {
+      n1,// 旧的虚拟dom
+      n2,// 新的虚拟dom
+      container,
+      anchor = null,
+      parentComponent = null,
+      parentSuspense = null,
+      isSVG = false,
       optimized = false
-      n2.dynamicChildren = null
+    ) => {
+      // 新节点的类型
+      const { type, ref, shapeFlag } = n2
+      switch (type) {
+        case Text:
+          ...
+          break
+        case Comment:
+          ...
+          break
+        case Static:
+          ...
+          break
+        case Fragment:
+          ...
+          break
+        default:
+          if (shapeFlag & ShapeFlags.ELEMENT) {
+            ...
+          } else if (shapeFlag & ShapeFlags.COMPONENT) {
+            processComponent(
+              n1,
+              n2,
+              container,
+              anchor,
+              parentComponent,
+              parentSuspense,
+              isSVG,
+              optimized
+            )
+          }
+      }
+    }
+  ```
+
+  由于**初始化**时传入的**虚拟 dom（`n2`）**是开发者调用`createApp`的参数，所以是一个**对象类型**，接下来执行`processComponent`方法<br>
+  核心源码如下：
+
+  ```typescript
+  const processComponent = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null,
+    parentSuspense: SuspenseBoundary | null,
+    isSVG: boolean,
+    optimized: boolean
+  ) => {
+    if (n1 == null) {
+      if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
+        ...
+      } else {
+        // 初始化渲染
+        mountComponent(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
+      }
+    } else {
+      // 组件更新
+      updateComponent(n1, n2, optimized);
+    }
+  };
+  ```
+
+  由于**首次渲染**传进来的**旧的虚拟 dom**是`null`，所以执行`mountComponent`方法
+
+## mountComponent
+
+- 作用
+  - 初始化组件
+- 核心源码
+
+  ```typescript
+  const mountComponent: MountComponentFn = (
+    initialVNode,
+    container,
+    anchor,
+    parentComponent,
+    parentSuspense,
+    isSVG,
+    optimized
+  ) => {
+    // 1. 创建组件实例
+    const instance: ComponentInternalInstance = (initialVNode.component = createComponentInstance(
+      initialVNode,
+      parentComponent,
+      parentSuspense
+    ));
+
+    // inject renderer internals for keepAlive
+    if (isKeepAlive(initialVNode)) {
+      (instance.ctx as KeepAliveContext).renderer = internals;
     }
 
-    // 获取新节点类型
-    const { type, ref, shapeFlag } = n2
-    switch (type) {
-      case Text:
-        processText(n1, n2, container, anchor)
-        break
-      case Comment:
-        processCommentNode(n1, n2, container, anchor)
-        break
-      case Static:
-        if (n1 == null) {
-          mountStaticNode(n2, container, anchor, isSVG)
-        } else if (__DEV__) {
-          patchStaticNode(n1, n2, container, isSVG)
-        }
-        break
-      case Fragment:
-        processFragment(
-          n1,
-          n2,
-          container,
-          anchor,
-          parentComponent,
-          parentSuspense,
-          isSVG,
-          optimized
-        )
-        break
-      default:
-        if (shapeFlag & ShapeFlags.ELEMENT) {
-          processElement(
-            n1,
-            n2,
-            container,
-            anchor,
-            parentComponent,
-            parentSuspense,
-            isSVG,
-            optimized
-          )
-        } else if (shapeFlag & ShapeFlags.COMPONENT) {
-          // 初始化走这里
-          processComponent(
-            n1,
-            n2,
-            container,
-            anchor,
-            parentComponent,
-            parentSuspense,
-            isSVG,
-            optimized
-          )
-        } else if (shapeFlag & ShapeFlags.TELEPORT) {
-          ;(type as typeof TeleportImpl).process(
-            n1 as TeleportVNode,
-            n2 as TeleportVNode,
-            container,
-            anchor,
-            parentComponent,
-            parentSuspense,
-            isSVG,
-            optimized,
-            internals
-          )
-        } else if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
-          ;(type as typeof SuspenseImpl).process(
-            n1,
-            n2,
-            container,
-            anchor,
-            parentComponent,
-            parentSuspense,
-            isSVG,
-            optimized,
-            internals
-          )
-        } else if (__DEV__) {
-          warn('Invalid VNode type:', type, `(${typeof type})`)
-        }
+    // 2. 安装组件：即组件初始化
+    setupComponent(instance);
+
+    // setup() is async. This component relies on async logic to be resolved
+    // before proceeding
+    if (__FEATURE_SUSPENSE__ && instance.asyncDep) {
+      parentSuspense && parentSuspense.registerDep(instance, setupRenderEffect);
+
+      // Give it a placeholder if this is not hydration
+      // TODO handle self-defined fallback
+      if (!initialVNode.el) {
+        const placeholder = (instance.subTree = createVNode(Comment));
+        processCommentNode(null, placeholder, container!, anchor);
+      }
+      return;
     }
 
-    // set ref
-    if (ref != null && parentComponent) {
-      setRef(ref, n1 && n1.ref, parentComponent, parentSuspense, n2)
+    // 3. 安装副作用，完成渲染，定义更新函数
+    setupRenderEffect(instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized);
+  };
+  ```
+
+  组件的初始化包括：
+
+  1. `createComponentInstance`： 创建**组件实例**
+  2. `setupComponent`：安装组件（组件初始化）
+  3. `setupRenderEffect`：安装渲染函数的副作用（effect），完成组件渲染，并定义组件的更新函数
+
+## 组件初始化
+
+### 创建组件实例
+
+balabala
+
+### 安装组件（组件初始化）
+
+### setupComponent [/packages/runtime-core/src/component.ts](https://github.com/vuejs/vue-next/blob/master/packages/runtime-core/src/component.ts#L520)
+
+- 作用
+  - 初始化组件
+    - `mergeOptions`、
+    - 定义**实例**的属性、事件、处理插槽，
+    - 通过`setupStatefulComponent`方法完成**数据响应式**
+- 核心源码
+
+  ```javascript
+  function setupComponent(instance: ComponentInternalInstance, isSSR = false) {
+    isInSSRComponentSetup = isSSR;
+
+    const { props, children, shapeFlag } = instance.vnode;
+    const isStateful = shapeFlag & ShapeFlags.STATEFUL_COMPONENT;
+    // 初始化props
+    initProps(instance, props, isStateful, isSSR);
+    // 初始化插槽
+    initSlots(instance, children);
+
+    // 数据响应式
+    const setupResult = isStateful ? setupStatefulComponent(instance, isSSR) : undefined;
+
+    isInSSRComponentSetup = false;
+    return setupResult;
+  }
+  ```
+
+  类似**Vue2**的`_init`方法
+
+### setupStatefulComponent [/packages/runtime-core/src/component.ts](https://github.com/vuejs/vue-next/blob/master/packages/runtime-core/src/component.ts#L538)
+
+<!-- finishComponentSetup applyOptions dataOptions resolveData reactive -->
+
+- 作用
+  - 完成数据响应式
+- 核心源码
+
+```typescript
+function setupStatefulComponent(instance: ComponentInternalInstance, isSSR: boolean) {
+   // createApp的配置对象
+  const Component = instance.type as ComponentOptions;
+
+  // 0. create render proxy property access cache
+  instance.accessCache = Object.create(null);
+
+  // 1. render函数的上下文，这里完成数据响应式
+  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
+
+  // 2. 处理setup函数
+  const { setup } = Component;
+  if (setup) {
+    const setupContext = (instance.setupContext =
+      setup.length > 1 ? createSetupContext(instance) : null);
+
+    currentInstance = instance;
+    pauseTracking();
+    const setupResult = callWithErrorHandling(setup, instance, ErrorCodes.SETUP_FUNCTION, [
+      __DEV__ ? shallowReadonly(instance.props) : instance.props,
+      setupContext,
+    ]);
+    resetTracking();
+    currentInstance = null;
+
+    if (isPromise(setupResult)) {
+      if (isSSR) {
+        ...
+      } else if (__FEATURE_SUSPENSE__) {
+        // async setup returned Promise.
+        // bail here and wait for re-entry.
+        instance.asyncDep = setupResult;
+      }
+    } else {
+       // 最终也会执行finishComponentSetup
+      handleSetupResult(instance, setupResult, isSSR);
+    }
+  } else {
+    finishComponentSetup(instance, isSSR);
+  }
+}
+```
+
+`handleSetupResult` 是没有设置`setup`的情况，最终也会执行`finishComponentSetup`
+
+### finishComponentSetup [/packages/runtime-core/src/component.ts](https://github.com/vuejs/vue-next/blob/master/packages/runtime-core/src/component.ts#L665)
+
+- 作用
+- 核心源码
+
+```typescript
+function finishComponentSetup(instance: ComponentInternalInstance, isSSR: boolean) {
+  const Component = instance.type as ComponentOptions;
+
+  // template / render function normalization
+  if (__NODE_JS__ && isSSR) {
+    ...
+  } else if (!instance.render) {
+    // could be set from setup()
+    if (compile && Component.template && !Component.render) {
+      if (__DEV__) {
+        startMeasure(instance, `compile`);
+      }
+      Component.render = compile(Component.template, {
+        isCustomElement: instance.appContext.config.isCustomElement,
+        delimiters: Component.delimiters,
+      });
+      if (__DEV__) {
+        endMeasure(instance, `compile`);
+      }
+    }
+
+    instance.render = (Component.render || NOOP) as InternalRenderFunction;
+
+    // for runtime-compiled render functions using `with` blocks, the render
+    // proxy used needs a different `has` handler which is more performant and
+    // also only allows a whitelist of globals to fallthrough.
+    if (instance.render._rc) {
+      instance.withProxy = new Proxy(instance.ctx, RuntimeCompiledPublicInstanceProxyHandlers);
     }
   }
+
+  // applyOptions兼容Vue2的options API
+  if (__FEATURE_OPTIONS_API__) {
+    currentInstance = instance;
+    pauseTracking();
+    applyOptions(instance, Component);
+    resetTracking();
+    currentInstance = null;
+  }
+}
 ```
+
+### 安装渲染函数的副作用
+
+**effect**替代了**Vue2**的**Watcher**
+
+#### setupRenderEffect [/packages/runtime-core/src/renderer.ts](https://github.com/vuejs/vue-next/blob/master/packages/runtime-core/src/renderer.ts#L1326)
+
+- 作用
+  - 并定义组件的更新函数
+  - 完成组件渲染
+- 核心源码
+
+```typescript
+const setupRenderEffect: SetupRenderEffectFn = (
+  instance,
+  initialVNode,
+  container,
+  anchor,
+  parentSuspense,
+  isSVG,
+  optimized
+) => {
+  // create reactive effect for rendering
+  instance.update = effect(
+    function componentEffect() {
+      if (!instance.isMounted) {
+        let vnodeHook: VNodeHook | null | undefined;
+        const { el, props } = initialVNode;
+        const { bm, m, parent } = instance;
+
+        // 1.首先获取当前组件的虚拟dom
+        const subTree = (instance.subTree = renderComponentRoot(instance));
+
+        if (el && hydrateNode) {
+          ...
+        } else {
+          // 初始化：递归执行patch
+          patch(...)
+        }
+      } else {
+        // updateComponent
+        patch(...)
+      }
+    },
+    __DEV__ ? createDevEffectOptions(instance) : prodEffectOptions
+  );
+};
+```
+
+我对**副作用**的理解：如果定义了一个**响应式数据**，和他相关的**副作用函数**在数据发生**变化时**会重新执行<br>
+函数内部通过`instance.isMounted`判断是**初始化渲染**或者是**组件更新**<br>
+
+## 流程梳理
+
+1. **Vue3**的入口是`createApp`方法，`createApp`通过`ensureRender`获取`renderer`对象，调用`renderer.createApp`方法返回**app 对象**，然后扩展`$mount`方法
+
+2. `ensureRender`保证`renderer`是一个**单例**，通过`createRenderer` 调用 `baseCreateRenderer`完成创建
+
+3. `baseCreateRenderer`是真正创建`renderer`的方法，`renderer`包括`render`、`hydrate`和`createApp`，其中`createApp`方法通过调用`createAppAPI`创建
+
+4. `createAppAPI`是一个工厂函数，返回一个真正的`createApp`方法，`createApp`内部创建了**Vue（app）**的实例方法并返回
+
+5. 如果开发者调用了`mount`方法，将继续执行`mount`方法，从`render`到`patch`，最终执行`processComponent`，在这里完成**数据响应式**、**真实 dom**的挂载，至此，**初始化阶段**结束
 
 ## 思考与总结
 
-1. `renderer`包含三部分
-   - 1. render
-   - 2. hydrate
-   - 3. createApp
+1. 渲染器（`renderer`）是一个**对象**，包含三部分<br>
 
-## 总结
+   - render
+   - hydrate
+   - createApp
 
-渲染器是一个对象，包含三个方法{render,hydrate,createApp}
+2. 全局方法为何调整到实例上？<br>
 
-为何调整为实例化
-
-- 避免实例之间污染
-- tree-shaking
-- 语义化
+   - 避免实例之间污染
+   - tree-shaking
+   - 语义化
