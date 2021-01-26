@@ -1,0 +1,25 @@
+<div id="app">
+  <p>{{state.count}}</p>
+  <button @click="add">add</button>
+</div>
+
+<script src="../dist/vue.global.js"></script>
+<script>
+  const { createApp, watchEffect, reactive } = Vue
+  const app = createApp({
+    setup() {
+      const state = reactive({
+        id: 1,
+        name: 'LL',
+      })
+      watchEffect(() => {
+        console.log('watchEffect id', state.id)
+
+        watchEffect(() => {
+          console.log('watchEffect name', state.name)
+        })
+      })
+      return { state }
+    },
+  }).mount('#app')
+</script>

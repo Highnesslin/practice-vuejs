@@ -10,6 +10,8 @@
       <h1>数据响应化</h1>
       <p>{{obj.foo}}</p>
       <p>{{obj.id}}</p>
+      <p>{{isLogin ? "true" : "false"}}</p>
+      <button @click="login">login</button>
     </div>
     <script>
       // 创建实例
@@ -21,6 +23,19 @@
           obj: {
             foo: "foo",
           },
+        },
+        computed: {
+          isLogin() {
+            return window.isLogin;
+          },
+        },
+        methods: {
+          login() {
+            window.isLogin = true;
+          },
+        },
+        beforeCreate() {
+          Vue.util.defineReactive(window, "isLogin", false);
         },
         mounted() {
           setTimeout(() => {

@@ -5,7 +5,7 @@
 
 <script src="../dist/vue.global.js"></script>
 <script>
-  const { createApp, reactive } = Vue
+  const { createApp, reactive, ref, computed, watch } = Vue
   const app = createApp({
     setup() {
       const state = reactive({
@@ -14,7 +14,20 @@
       const add = () => {
         state.count++
       }
-      return { state, add }
+
+      // // computed
+      debugger
+      const num = ref(0)
+
+      // // watch
+      // watch(
+      //   () => state.count,
+      //   (count, prevCount) => {
+      //     console.log(count, prevCount)
+      //   }
+      // )
+
+      return { state, add, num }
     },
   }).mount('#app')
 </script>
