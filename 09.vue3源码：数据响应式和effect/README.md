@@ -75,20 +75,58 @@ export const enum ReactiveFlags {
     if (existingProxy) {
       return existingProxy;
     }
-    // 3. 创建响应式对象
+
+    // 3. 不在白名单里的都不会被创建响应式
+    const targetType = getTargetType(target);
+    if (targetType === TargetType.INVALID) {
+      return target;
+    }
+
+    // 4. 创建响应式对象
     const proxy = new Proxy(
       target,
       targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers
     );
-    // 4. 存入 缓存
+    // 5. 存入 缓存
     proxyMap.set(target, proxy);
     return proxy;
   }
   ```
 
-  根据`target`是 `Set、Map` 还是 **普通对象** 来决定使用哪一种 `handler`
+  其中**白名单**`getTargetType`的判断如下
 
-  如果是**普通对象（包括数组）**则使用`baseHandlers`，也就是`mutableHandlers`
+  ```javascript
+  function targetTypeMap(rawType: string) {
+    switch (rawType) {
+      case 'Object':
+      case 'Array':
+        return TargetType.COMMON;
+      case 'Map':
+      case 'Set':
+      case 'WeakMap':
+      case 'WeakSet':
+        return TargetType.COLLECTION;
+      default:
+        return TargetType.INVALID;
+    }
+  }
+
+  function getTargetType(value: Target) {
+    return value[ReactiveFlags.SKIP] || !Object.isExtensible(value)
+      ? TargetType.INVALID
+      : targetTypeMap(toRawType(value));
+  }
+  ```
+
+  不满足**白名单条件**的情况如下
+
+  [点这里](https://juejin.cn/post/6893763807899271181#heading-1)
+
+  1. `ReactiveFlags.SKIP`不能为`__v_skip`，即不可跳过
+  2. `target`不是`Object`、`Array`、`Map`、`Set`、`WeakMap`、`WeakSet`其中一个
+  3. `target`是可扩展的([Object.isExtensible](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Object/isExtensible))，即没有被执行`preventExtensions`、`seal`或`freeze`
+
+  最后，根据一个**三元表达式**创建`proxy`，普通对象 **Object** 和**Array**，均采用 `baseHandlers`；如果属于 `Set`、`Map`、`WeakMap`、`WeakSet`就使用`mutableHandlers`
 
 ### mutableHandlers [/packages/reactivity/src/baseHandlers.ts](https://github.com/vuejs/vue-next/blob/master/packages/reactivity/src/baseHandlers.ts#L187)
 
