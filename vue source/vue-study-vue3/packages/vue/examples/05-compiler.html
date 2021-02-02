@@ -1,4 +1,4 @@
-<div id="app">
+<!-- <div id="app">
   <ul>
     <li></li>
     <li></li>
@@ -28,6 +28,24 @@
         })
       })
       return { state }
+    },
+  }).mount('#app')
+</script> -->
+
+<div id="app">
+  <h1 :class="className">测试数据</h1>
+</div>
+
+<script src="../dist/vue.global.js"></script>
+<script>
+  const { createApp, reactive } = Vue
+  const app = createApp({
+    setup() {
+      const state = reactive({
+        className: "LL",
+      })
+     
+      return { className: state.className }
     },
   }).mount('#app')
 </script>
